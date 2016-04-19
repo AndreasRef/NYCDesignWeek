@@ -1,0 +1,141 @@
+{
+  "/c1S": {
+    "min": 0,
+    "max": 255,
+    "value": 255
+  },
+  "/minDepth": {
+    "min": 0,
+    "max": 1000,
+    "value": 60
+  },
+  "/c3S": {
+    "min": 0,
+    "max": 255,
+    "value": 255
+  },
+  "/verticalSteps": {
+    "min": 0,
+    "max": 10,
+    "value": 3
+  },
+  "/showBlobs": {"value": 0},
+  "/endY": {
+    "min": 240,
+    "max": 480,
+    "value": 453.33331298828125
+  },
+  "/endX": {
+    "min": 640,
+    "max": 1280,
+    "value": 1170.10107421875
+  },
+  "/switchOrder": {"value": 0},
+  "/maxDepth": {
+    "min": 0,
+    "max": 1000,
+    "value": 914
+  },
+  "/kinect0Y": {
+    "min": -100,
+    "max": 100,
+    "value": 65
+  },
+  "/kinect0X": {
+    "min": -100,
+    "max": 100,
+    "value": 14
+  },
+  "/c1B": {
+    "min": 0,
+    "max": 255,
+    "value": 255
+  },
+  "/minimumBlobSize": {
+    "min": 0,
+    "max": 250,
+    "value": 100
+  },
+  "/c3B": {
+    "min": 0,
+    "max": 255,
+    "value": 255
+  },
+  "/mouseControl": {"value": 0},
+  "/showButtons": {"value": 1},
+  "/showEdges": {"value": 1},
+  "/luminosityThreshold": {
+    "min": 0,
+    "max": 1,
+    "value": 0.699999988079071
+  },
+  "/c1H": {
+    "min": 0,
+    "max": 255,
+    "value": 255
+  },
+  "/c3H": {
+    "min": 0,
+    "max": 255,
+    "value": 206.06060791015625
+  },
+  "/c2S": {
+    "min": 0,
+    "max": 255,
+    "value": 255
+  },
+  "/showInfo": {"value": 0},
+  "/blurFactor": {
+    "min": 0,
+    "max": 50,
+    "value": 6
+  },
+  "/autoPress": {"value": 0},
+  "/mirror": {"value": 1},
+  "/rgbView": {"value": 0},
+  "/cropAmount": {
+    "min": 0,
+    "max": 50,
+    "value": 9
+  },
+  "/kinect1Y": {
+    "min": -100,
+    "max": 100,
+    "value": 1
+  },
+  "/c2B": {
+    "min": 0,
+    "max": 255,
+    "value": 255
+  },
+  "/kinect1X": {
+    "min": -100,
+    "max": 100,
+    "value": 0
+  },
+  "/startY": {
+    "min": 0,
+    "max": 240,
+    "value": 101.81818389892578
+  },
+  "/horizontalSteps": {
+    "min": 0,
+    "max": 10,
+    "value": 6
+  },
+  "/startX": {
+    "min": 0,
+    "max": 640,
+    "value": 77.57575988769531
+  },
+  "/c2H": {
+    "min": 0,
+    "max": 255,
+    "value": 38.6363639831543
+  },
+  "/fadeSpeed": {
+    "min": 0,
+    "max": 100,
+    "value": 0
+  }
+}

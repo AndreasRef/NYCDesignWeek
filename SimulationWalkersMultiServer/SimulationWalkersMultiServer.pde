@@ -1,10 +1,12 @@
-//This sketch simulates people walking around in the tunnel and supports two computers communicating over wifi network
-//This part is the Server, which does the light animation and sends messages to max4Live
+//This sketch is the Server that recieves values from the two client sketches over wifi network about the position of people
+//It can also simulates people walking around in the tunnel using the walker class
+//The sketch uses it inputs to determine which commands to send to the light animation and Max4Live
 
 //Update April 19th: Integrated with Arduino, so touching the tubes triggers chime sound and lights up the tubes (in the simulation)
 ////Note that pins 0, 1 and 13 are not accessible from the Arduino, so you need to recalculate the values comming from the Arduino!
 
-//Update April 19th: Attempt to make a server that recieves button values from two clients at the same time
+//Still to do: Integration with the Pixel Pusher
+//Could use a good cleanup!
 
 import controlP5.*;
 ControlP5 cp5;
@@ -14,7 +16,7 @@ import netP5.*;
 
 //Server
 import processing.net.*;
-Server server;
+Server server1;
 Server server2;
 
 //Arduino Serial
@@ -24,7 +26,6 @@ int serialCounter = 0;
 int lastSerialCounter =0;
 
 int triggerValue = -1;
-
 
 String incomingMessage = "";
 
@@ -40,6 +41,8 @@ boolean displayNumbers = true;
 boolean displayButtons = true;
 
 boolean whiteLights = true;
+boolean walkerSimulation = false;
+
 
 int programHeight = 480;
 
@@ -79,7 +82,7 @@ void setup() {
 
   myRemoteLocation = new NetAddress("127.0.0.1", 5001); // set the remote location to be the localhost on port 5001
 
-  server = new Server(this, 5204);
+  server1 = new Server(this, 5204);
   server2 = new Server(this, 5205);
 
   OscMessage bangMessage = new OscMessage("/bang"); //Start the metro
@@ -93,7 +96,8 @@ void setup() {
 
   cp5.addToggle("displayNumbers").setPosition(200, height-55).setSize(50, 10);
   cp5.addToggle("displayButtons").setPosition(200, height-25).setSize(50, 10);
-  cp5.addToggle("whiteLights").setPosition(325, height-55).setSize(50, 10);
+  cp5.addToggle("whiteLights").setPosition(300, height-55).setSize(50, 10);
+  cp5.addToggle("walkerSimulation").setPosition(300, height-25).setSize(50, 10);
 
   cp5.addColorWheel("gradientStart", 400, height - 115, 100 ).setRGB(color(#71FFD6));
   cp5.addColorWheel("gradientEnd", 520, height - 115, 100 ).setRGB(color(#FA0DFF));
@@ -115,13 +119,19 @@ void draw() {
   //Run through all the buttons
   for (Button button : buttons) {
 
-  //Uncomment this to use walker simulation (will overrule the Kinect button values)
-    //button.over=false;
-    //for (int i = 0; i < walkers.size(); i++) { //Update using random walkers
-    //Walker w = walkers.get(i);
-    //button.update(w.location.x, w.location.y);
-    //} //Simulation walkers end here
-
+    //Uncomment this to use walker simulation (will overrule the Kinect button values)
+    if (walkerSimulation == true) {
+      button.over=false;
+      for (int i = 0; i < walkers.size(); i++) { //Update using random walkers
+        Walker w = walkers.get(i);
+        button.update(w.location.x, w.location.y);
+      } 
+    } else {
+     //Kill all walkers 
+     for (int i = 0; i < walkers.size(); i++) {
+     walkers.remove(i);
+     }
+    }
     if (displayButtons) button.display();
     if (displayNumbers) button.displayNumbers();
   }
@@ -170,12 +180,12 @@ void draw() {
     vibrationTrigged = false;
   } 
 
-  serverRecieve(); //Also update from net communication
+  server1Recieve(); //Also update from net communication
   server2Recieve(); //Also update from net communication
 }
 
-void serverRecieve() {
-  Client client = server.available();
+void server1Recieve() {
+  Client client = server1.available();
   if (client != null) {
 
     incomingMessage = client.readString(); 
@@ -207,7 +217,7 @@ void server2Recieve() {
 
     data = int(split(incomingMessage, " "));
 
-    if (data.length == 7*8) { //This is necessary since the data sometimes is cut off, so not all values are sent
+    if (data.length == 7*8) { //This is necessary since the data sometimes gets cut off, so not all values are sent
       for (int i = 0; i <7*8; i++)
         if (data[i] == 1) {
           buttons[i + 56].over = true;

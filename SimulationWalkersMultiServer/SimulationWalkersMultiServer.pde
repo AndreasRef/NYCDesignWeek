@@ -6,89 +6,91 @@
 ////Note that pins 0, 1 and 13 are not accessible from the Arduino, so you need to recalculate the values comming from the Arduino!
 
 //Still to do: Integration with the Pixel Pusher
-//Could use a good cleanup!
 
+//Update April 20th: Cleanup, flush MIDI notes
+
+//Libraries
 import controlP5.*;
-ControlP5 cp5;
-
-import oscP5.*;
 import netP5.*;
-
-//Server
+import oscP5.*;
 import processing.net.*;
-Server server1;
-Server server2;
+import processing.serial.*;
+
 
 //Arduino Serial
-import processing.serial.*;
 Serial myPort;
 int serialCounter = 0;
 int lastSerialCounter =0;
-
 int triggerValue = -1;
-
 String incomingMessage = "";
+int data[];
+int[] cMinor = {72, 74, 75, 77, 79, 80, 82, 84, 86, 87, 89, 91, 92, 94, 96, 98, 99, 101, 103, 104, 106, 108, 110, 11, 113, 115, 116, 118};
+boolean vibrationTrigged = false;
+long vibrationTimer = 0;
 
-OscP5 oscP5;
-NetAddress myRemoteLocation;
-
-//Buttons
+//Button
 int horizontalSteps = 16;
 int verticalSteps = 7;
 int count;
 Button[] buttons;
-boolean displayNumbers = true;
-boolean displayButtons = true;
-
-boolean whiteLights = true;
-boolean walkerSimulation = false;
-
-
-int programHeight = 480;
-
 int beatVal1 = 0;
 
-ArrayList<Walker> walkers;
-float walkerSteps = 2;
 
-int yOffset = 100;
-int speed = 50;
+//ControlP5
+ControlP5 cp5;
 
-Light[] lights = new Light[horizontalSteps];
+boolean displayNumbers = true;
+boolean displayButtons = true;
+boolean whiteLights = true;
+boolean walkerSimulation = false;
 
 color gradientStart;
 color gradientEnd;
 color currentBeatC;
 color triggerC;
 
-int data[];
+int speed = 50;
 
-int[] cMinor = {72, 74, 75, 77, 79, 80, 82, 84, 86, 87, 89, 91, 92, 94, 96, 98, 99, 101, 103, 104, 106, 108, 110, 11, 113, 115, 116, 118};
+//Light
+Light[] lights = new Light[horizontalSteps];
 
-boolean vibrationTrigged = false;
-long vibrationTimer = 0;
+
+//OscP5
+OscP5 oscP5;
+NetAddress myRemoteLocation;
+
+
+//Server
+Server server1;
+Server server2;
+
+
+//Walker
+ArrayList<Walker> walkers;
+float walkerSteps = 2;
+
+
+
+//Global variables
+int programHeight = 480;
+int yOffset = 100;
+
+
 
 void setup() {
   size(1280, 800);
+  
+  //Arduino Serial
   println(Serial.list());
-
   myPort = new Serial(this, Serial.list()[1], 9600);
   myPort.bufferUntil('\n');
-
-  walkers = new ArrayList<Walker>();
-
-  oscP5 = new OscP5(this, 5002); // Listen for incoming messages at port 5002
-  oscP5.plug(this, "beatPlug", "/beat");
-
-  myRemoteLocation = new NetAddress("127.0.0.1", 5001); // set the remote location to be the localhost on port 5001
-
-  server1 = new Server(this, 5204);
-  server2 = new Server(this, 5205);
-
-  OscMessage bangMessage = new OscMessage("/bang"); //Start the metro
-  bangMessage.add(1);
-  oscP5.send(bangMessage, myRemoteLocation);
-
+  
+  
+  //Button
+  setupButtons();
+  
+  
+  //ControlP5
   cp5 = new ControlP5(this);
   cp5.addSlider("horizontalSteps", 0, 16).setPosition(10, height-55);
   cp5.addSlider("verticalSteps", 0, 8).setPosition(10, height-35);
@@ -105,24 +107,43 @@ void setup() {
   cp5.addColorWheel("currentBeatC", 650, height - 115, 100 ).setRGB(color(#08FFEC));
   cp5.addColorWheel("triggerC", 770, height - 115, 100 ).setRGB(color(#FFFFFF));
   cp5.addFrameRate().setPosition(width-100, height-50);
-
-  setupButtons();
-
+  
+  
+  //Light
   for (int i=0; i<lights.length; i++) {
     lights[i] = new Light(i, 255, 255, 255, color(#FC03C3)); //Pink
   }
+  
+  
+  //OscP5
+  oscP5 = new OscP5(this, 5002); // Listen for incoming messages at port 5002
+  oscP5.plug(this, "beatPlug", "/beat");
+  myRemoteLocation = new NetAddress("127.0.0.1", 5001); // set the remote location to be the localhost on port 5001
+  
+  OscMessage bangMessage = new OscMessage("/bang"); //Start the metro
+  bangMessage.add(1);
+  oscP5.send(bangMessage, myRemoteLocation);
+  
+  
+  //Server
+  server1 = new Server(this, 5204);
+  server2 = new Server(this, 5205);
+
+
+  //Walker
+  walkers = new ArrayList<Walker>();
+   
 }
 
 void draw() {
   background(50);
-
-  //Run through all the buttons
+  
+  //Button & Walker
   for (Button button : buttons) {
 
-    //Uncomment this to use walker simulation (will overrule the Kinect button values)
-    if (walkerSimulation == true) {
+    if (walkerSimulation == true) { //Update using random walkers
       button.over=false;
-      for (int i = 0; i < walkers.size(); i++) { //Update using random walkers
+      for (int i = 0; i < walkers.size(); i++) { 
         Walker w = walkers.get(i);
         button.update(w.location.x, w.location.y);
       } 
@@ -135,7 +156,8 @@ void draw() {
     if (displayButtons) button.display();
     if (displayNumbers) button.displayNumbers();
   }
-
+  
+  //Button & Osc 
   OscMessage myMessage = new OscMessage("/sequencer");
   for (Button button : buttons) {
     myMessage.add(button.row);
@@ -147,24 +169,28 @@ void draw() {
     }
   }
   oscP5.send(myMessage, myRemoteLocation);
-
+  
+  //Walker
   for (int i = 0; i < walkers.size(); i++) {
     Walker w = walkers.get(i);
     w.walk();
     w.display();
   }
-
+  
+  //Show beat line
   strokeWeight(25);
   stroke(255, 0, 0);
   //line(beatVal1*width/horizontalSteps + 0.5*width/horizontalSteps, yOffset, beatVal1*width/horizontalSteps + 0.5*width/horizontalSteps, programHeight+yOffset);
   strokeWeight(1);
 
+  //Light
   pushStyle();
-  colorMode(HSB, 255);
+  colorMode(HSB, 255); //OBS!
   drawLights();
   popStyle();
 
 
+  //Arduino Serial
   if (lastSerialCounter == serialCounter) {
     // Do nothing
   } else {
@@ -178,12 +204,15 @@ void draw() {
 
   if (vibrationTimer > 100) {
     vibrationTrigged = false;
-  } 
 
-  server1Recieve(); //Also update from net communication
-  server2Recieve(); //Also update from net communication
+  } 
+  
+  //Server
+  server1Recieve(); 
+  server2Recieve(); 
 }
 
+//Server
 void server1Recieve() {
   Client client = server1.available();
   if (client != null) {
@@ -224,14 +253,14 @@ void server2Recieve() {
         } else {
           buttons[i + 56].over = false;
         }
-      println("GOOD data length");
+      //println("GOOD data length");
     } else if (data.length >0) {
-      println(data.length);
+      //println(data.length);
     }
   }
 }
 
-
+//Light
 void drawLights() {
 
   noStroke();
@@ -255,8 +284,7 @@ void drawLights() {
       }
     }
 
-    //Test with Arduino inputs
-
+    //Arduino inputs
     if (triggerValue > -1 && vibrationTrigged == true) { //Small hack to avoid arrayOutOfBounds error when starting up
       lights[triggerValue-2].fillC = color (hue(lerpColor(gradientStart, gradientEnd, abs(200 - (frameCount % 400))*0.005)), 255, 255); //Lerp color full on
     }
@@ -271,11 +299,13 @@ void controlEvent(ControlEvent theEvent) {
 }
 
 
+//Walker
 void keyPressed() {
   if (key == 'a') walkers.add(new Walker((int)random(width), (int)random(programHeight)+yOffset)); 
   if (key == 'd' && walkers.size() > 0)  walkers.remove(0);
 }
 
+//Button
 void setupButtons () {
   count = horizontalSteps * verticalSteps;
   buttons = new Button[count];
@@ -296,12 +326,11 @@ void mousePressed() {
   }
 }
 
-
 public void beatPlug(int _beatVal1) {
   beatVal1 = _beatVal1;
 }
 
-// The serverEvent function is called whenever a new client connects.
+// The serverEvent function is called whenever a new client connects. //Currently does not react!
 void serverEvent(Server server, Client client) {
   incomingMessage = "A new client has connected: " + client.ip();
   println(incomingMessage);
@@ -325,7 +354,6 @@ void trigFunction() {
   println("Total trigs recieved " + serialCounter);
   println();
 
-  //int midiNote = int(random(65, 80));
   int midiNote = cMinor[triggerValue-2]; 
 
   OscMessage myMessage = new OscMessage("/note");
@@ -337,4 +365,10 @@ void trigFunction() {
   myMessageOff.add(midiNote); 
   myMessageOff.add(0); 
   oscP5.send(myMessageOff, myRemoteLocation);
+  
+  //Flush out previous notes
+  OscMessage myMessageFlush = new OscMessage("/flush");
+  myMessageFlush.add(1);
+  oscP5.send(myMessageFlush, myRemoteLocation);
+  
 }

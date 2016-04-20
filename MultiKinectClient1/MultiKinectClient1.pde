@@ -7,41 +7,41 @@
 
 //This sketch has two Kinect inputs and sends the button/blob information to the server
 
+//Update April 20th: Cleanup
+
+//Libraries
 import org.openkinect.freenect.*;
 import org.openkinect.processing.*;
-
 import blobDetection.*;
-
 import controlP5.*;
-
-// Import the net libraries
 import processing.net.*;
-// Declare a client
-Client client;
 
-ControlP5 cp5;
 
-//Kinect
-ArrayList<Kinect> multiKinect;
-
-int numDevices = 0;
-
-PGraphics pg;
-
-//DepthThreshold
-PImage depthImg;
-
-//Blob
+//BlobDetection
 BlobDetection theBlobDetection;
 PImage img;
 boolean newFrame=false;
 
-int programHeight = 480; 
+
+//Buttons
+int startX = 0;
+int startY = 0;
+int endX = 1280;
+int endY = 480;
+int horizontalSteps = 8;
+int verticalSteps = 7;
+int count;
+Button[] buttons;
+
+
+// Client
+Client client;
+
 
 //ControlP5
+ControlP5 cp5;
 int minDepth =  60;
 int maxDepth = 914;
-
 boolean positiveNegative = true;
 boolean showBlobs = false;
 boolean showEdges = true;
@@ -52,40 +52,49 @@ int blurFactor = 6;
 boolean mirror = true;
 boolean rgbView = false;
 boolean switchOrder = false;
-
 int cropAmount = 9;
-
 int kinect0X, kinect0Y, kinect1X, kinect1Y;
-
-//Buttons
-int startX = 0;
-int startY = 0;
-int endX = 1280;
-int endY = 480;
-
-int horizontalSteps = 8;
-int verticalSteps = 7;
-int count;
-Button[] buttons;
 boolean displayNumbers = true;
-boolean autoPress = false;
 boolean mouseControl = true;
 boolean showButtons = true;
 
-PVector bCenterLerp; 
+
+//DepthThreshold
+PImage depthImg;
+
+
+//Kinect
+ArrayList<Kinect> multiKinect;
+int numDevices = 0;
+PGraphics pg;
+
+
+//Global variables
+int programHeight = 480; 
+
 
 void setup() {
   size(1280, 640);
-  
+
   frameRate(10); //Attempt to avoid jumpyness and communication errors... 
 
-  pg = createGraphics(1280, 480); 
-  
-  client = new Client(this, "192.168.10.120", 5204); //The ip address is subject to change, so make sure you have it right every time you start up the program.
+  //Button
+  setupButtons();
 
+
+  //Client
+  client = new Client(this, "192.168.10.123", 5204); //The ip address is subject to change, so make sure you have it right every time you start up the program.
+
+
+  //ControlP5
+  cp5 = new ControlP5(this);
+  controlP5setup();
+
+
+  //Kinect
+  pg = createGraphics(1280, 480); 
   numDevices = Kinect.countDevices();
   println("number of Kinect v1 devices  "+numDevices);
-
   multiKinect = new ArrayList<Kinect>();
 
   //iterate through all the devices and activate them
@@ -99,6 +108,7 @@ void setup() {
   }
   depthImg = new PImage(640, 480);
 
+
   // BlobDetection
   // img which will be sent to detection 
   img = new PImage(1280/4, 480/4); //a smaller copy of the frame is faster, but less accurate. Between 2 and 4 is normally fine
@@ -106,14 +116,7 @@ void setup() {
   theBlobDetection.setPosDiscrimination(true);
   theBlobDetection.setThreshold(luminosityThreshold); // will detect bright areas whose luminosity > luminosityThreshold (reverse if setPosDiscrimination(false);
 
-  //ControlP5
-  cp5 = new ControlP5(this);
-  controlP5setup();
 
-  //Button
-  setupButtons();
-  
-  bCenterLerp = new PVector(0.0,0.0);
 }
 
 void draw() {
@@ -186,20 +189,19 @@ void draw() {
     button.over=false;
 
     if (mouseControl) {
-      button.update(mouseX, mouseY); 
+      button.update(mouseX, mouseY);
     } else {
 
       Blob b;
       for (int n=0; n<theBlobDetection.getBlobNb(); n++)
       {
         b=theBlobDetection.getBlob(n);
-        
+
         //Make a vector for the center of the blob
         PVector bCenter = new PVector (b.xMin*width/1 + b.w*width/2, b.yMin*programHeight + b.h*programHeight/2);
-        
+
         //Perhaps make a lerp function to smooth out values and avoid jumpiness?
         button.update(bCenter.x, bCenter.y);
-        
       }
     }
     if (showButtons) { 
@@ -208,11 +210,11 @@ void draw() {
     }
   }
   popStyle();
-  
-  
+
+
   //Send information about each button to the server
   for (int i = 0; i<horizontalSteps*verticalSteps; i++) {
-  client.write(str(int(buttons[i].over)) + " ");
+    client.write(str(int(buttons[i].over)) + " ");
   }
 
   pushStyle();

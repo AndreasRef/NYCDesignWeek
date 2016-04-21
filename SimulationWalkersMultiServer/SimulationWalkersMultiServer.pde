@@ -12,6 +12,8 @@
 //Update April 21st: More GUI, Arduino trig lights up strip and then fades out. 
 //Attempt to send a wave through a strip from the bottom and up when Arduino trig lights
 
+//Attempt since last Github push: Try to make the white lights fade to the background color after being hit
+
 //Libraries
 import controlP5.*;
 import netP5.*;
@@ -71,6 +73,9 @@ int data[];
 int[] cMinor = {72, 74, 75, 77, 79, 80, 82, 84, 86, 87, 89, 91, 92, 94, 96, 98, 99, 101, 103, 104, 106, 108, 110, 11, 113, 115, 116, 118};
 boolean vibrationTrigged = false;
 long vibrationTimer = 0;
+
+long fadingTimer = 0;
+boolean fadingTrigged = false;
 
 //Button
 int horizontalSteps = 16;
@@ -203,7 +208,17 @@ void draw() {
       
       if (triggerValue - 2 == i && vibrationTrigged) {
       runThroughStrip(triggerValue-2, color(#FFFFFF)); //standard
-      } else {
+      } 
+      
+      else if (triggerValue - 2 == i && fadingTrigged) { //Fading function
+      
+      pushStrip(i, lerpColor(#FFFFFF,lights[i].fillC,(fadingTimer-100)/100.0));
+      
+      
+      println("Hello: " + fadingTimer + " " + (fadingTimer-100)/100);
+      
+      }
+      else {
       pushStrip(i, color(lights[i].fillC));
       }
       
@@ -285,7 +300,18 @@ void draw() {
   if (vibrationTimer > 100) {
     vibrationTrigged = false;
   } 
-
+  
+  fadingTimer ++;
+  
+  if (fadingTimer > 200) {
+  fadingTrigged = false;
+  }
+  
+  if (fadingTimer < 200) {
+  fadingTrigged = true;
+  }
+  
+  
   //Server
   server1Recieve(); 
   server2Recieve();
@@ -368,7 +394,7 @@ void drawLights() {
 
     //Arduino inputs
     if (triggerValue > -1 && vibrationTrigged == true) { //Small hack to avoid arrayOutOfBounds error when starting up
-      lights[triggerValue-2].fillC = color (hue(lerpColor(gradientStart, gradientEnd, abs(200 - (frameCount % 400))*0.005)), passiveSat, triggerBri); //Lerp color full on
+      //lights[triggerValue-2].fillC = color (hue(lerpColor(gradientStart, gradientEnd, abs(200 - (frameCount % 400))*0.005)), passiveSat, triggerBri); //Lerp color full on
     }
     lights[i].display();
   }
@@ -429,6 +455,8 @@ void serialEvent(Serial thisPort) {
   vibrationTrigged = true;
   //triggerBri = 255;
   vibrationTimer = 0;
+  
+  fadingTimer = 0;
 }
 
 void trigFunction() {

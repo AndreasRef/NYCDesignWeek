@@ -5,9 +5,12 @@
 //Update April 19th: Integrated with Arduino, so touching the tubes triggers chime sound and lights up the tubes (in the simulation)
 ////Note that pins 0, 1 and 13 are not accessible from the Arduino, so you need to recalculate the values comming from the Arduino!
 
-//Still to do: Integration with the Pixel Pusher
+//Update April 20th I: Cleanup, flush MIDI notes
 
-//Update April 20th: Cleanup, flush MIDI notes
+//Update April 20th II: Light class controls Pixelpusher lights
+
+//Update April 21st: More GUI, Arduino trig lights up strip and then fades out. 
+//Attempt to send a wave through a strip from the bottom and up when Arduino trig lights
 
 //Libraries
 import controlP5.*;
@@ -15,6 +18,47 @@ import netP5.*;
 import oscP5.*;
 import processing.net.*;
 import processing.serial.*;
+
+import com.heroicrobot.dropbit.registry.*;
+import com.heroicrobot.dropbit.devices.pixelpusher.Pixel;
+import com.heroicrobot.dropbit.devices.pixelpusher.Strip;
+import java.util.*;
+
+//Pixelpusher
+
+DeviceRegistry registry;
+
+class TestObserver implements Observer {
+  public boolean hasStrips = false;
+  public void update(Observable registry, Object updatedDevice) {
+    //println("Registry changed!");
+    if (updatedDevice != null) {
+      //println("Device change: " + updatedDevice);
+    }
+    this.hasStrips = true;
+  }
+}
+
+TestObserver testObserver;
+List<Strip> strips;
+
+int sidesPerStrip = 3;
+int stripNumbers = 6;
+int pixelsPerStrip = 72;
+int pixelsPerSide = 24;
+
+int hue[] = new int[stripNumbers*pixelsPerStrip];
+int saturation[] = new int[stripNumbers*pixelsPerStrip];
+int brightness[] = new int[stripNumbers*pixelsPerStrip];
+
+int passiveSat = 255;
+int passiveBri = 50;
+
+int triggerBri = passiveBri;
+
+color[] colorOptions = { #003D43, #38001F, #8F7D00};
+
+int[] waveCount = {0, 0, 0, 0, 0, 0};
 
 
 //Arduino Serial
@@ -79,17 +123,22 @@ int yOffset = 100;
 
 void setup() {
   size(1280, 800);
-  
+
   //Arduino Serial
   println(Serial.list());
   myPort = new Serial(this, Serial.list()[1], 9600);
   myPort.bufferUntil('\n');
-  
-  
+
+  //PixelPusher
+  registry = new DeviceRegistry();
+  testObserver = new TestObserver();
+  registry.addObserver(testObserver);
+
+
   //Button
   setupButtons();
-  
-  
+
+
   //ControlP5
   cp5 = new ControlP5(this);
   cp5.addSlider("horizontalSteps", 0, 16).setPosition(10, height-55);
@@ -107,24 +156,27 @@ void setup() {
   cp5.addColorWheel("currentBeatC", 650, height - 115, 100 ).setRGB(color(#08FFEC));
   cp5.addColorWheel("triggerC", 770, height - 115, 100 ).setRGB(color(#FFFFFF));
   cp5.addFrameRate().setPosition(width-100, height-50);
-  
-  
+
+  cp5.addSlider("passiveSat", 0, 255).setPosition(880, height-35);
+  cp5.addSlider("passiveBri", 0, 255).setPosition(880, height-15);
+
+
   //Light
   for (int i=0; i<lights.length; i++) {
     lights[i] = new Light(i, 255, 255, 255, color(#FC03C3)); //Pink
   }
-  
-  
+
+
   //OscP5
   oscP5 = new OscP5(this, 5002); // Listen for incoming messages at port 5002
   oscP5.plug(this, "beatPlug", "/beat");
   myRemoteLocation = new NetAddress("127.0.0.1", 5001); // set the remote location to be the localhost on port 5001
-  
+
   OscMessage bangMessage = new OscMessage("/bang"); //Start the metro
   bangMessage.add(1);
   oscP5.send(bangMessage, myRemoteLocation);
-  
-  
+
+
   //Server
   server1 = new Server(this, 5204);
   server2 = new Server(this, 5205);
@@ -132,12 +184,40 @@ void setup() {
 
   //Walker
   walkers = new ArrayList<Walker>();
-   
 }
 
 void draw() {
   background(50);
+
+  //Each strip should get the color of the corresponding light
+
+  // Pixelpusher test start
+
+  if (testObserver.hasStrips) {
+    registry.startPushing();
+    registry.setAutoThrottle(true);
+    registry.setAntiLog(true);
+    strips = registry.getStrips();
+
+    for (int i = 0; i<6; i++) {
+      
+      if (triggerValue - 2 == i && vibrationTrigged) {
+      runThroughStrip(triggerValue-2, color(#FFFFFF)); //standard
+      } else {
+      pushStrip(i, color(lights[i].fillC));
+      }
+      
+    }
+  }
+
+  //Attempt to send a wave through a strip from the bottom and up 
   
+  
+
+
+  // Pixelpusher end
+
+
   //Button & Walker
   for (Button button : buttons) {
 
@@ -146,17 +226,17 @@ void draw() {
       for (int i = 0; i < walkers.size(); i++) { 
         Walker w = walkers.get(i);
         button.update(w.location.x, w.location.y);
-      } 
+      }
     } else {
-     //Kill all walkers 
-     for (int i = 0; i < walkers.size(); i++) {
-     walkers.remove(i);
-     }
+      //Kill all walkers 
+      for (int i = 0; i < walkers.size(); i++) {
+        walkers.remove(i);
+      }
     }
     if (displayButtons) button.display();
     if (displayNumbers) button.displayNumbers();
   }
-  
+
   //Button & Osc 
   OscMessage myMessage = new OscMessage("/sequencer");
   for (Button button : buttons) {
@@ -169,18 +249,18 @@ void draw() {
     }
   }
   oscP5.send(myMessage, myRemoteLocation);
-  
+
   //Walker
   for (int i = 0; i < walkers.size(); i++) {
     Walker w = walkers.get(i);
     w.walk();
     w.display();
   }
-  
+
   //Show beat line
   strokeWeight(25);
   stroke(255, 0, 0);
-  //line(beatVal1*width/horizontalSteps + 0.5*width/horizontalSteps, yOffset, beatVal1*width/horizontalSteps + 0.5*width/horizontalSteps, programHeight+yOffset);
+  line(beatVal1*width/horizontalSteps + 0.5*width/horizontalSteps, yOffset, beatVal1*width/horizontalSteps + 0.5*width/horizontalSteps, programHeight+yOffset);
   strokeWeight(1);
 
   //Light
@@ -204,12 +284,14 @@ void draw() {
 
   if (vibrationTimer > 100) {
     vibrationTrigged = false;
-
   } 
-  
+
   //Server
   server1Recieve(); 
-  server2Recieve(); 
+  server2Recieve();
+
+  if (triggerBri > passiveBri) triggerBri -=4;
+  //println(triggerBri);
 }
 
 //Server
@@ -229,9 +311,9 @@ void server1Recieve() {
         } else {
           buttons[i].over = false;
         }
-      println("GOOD data length");
+      //println("GOOD data length");
     } else if (data.length >0) {
-      println(data.length);
+      //println(data.length);
     }
   }
 }
@@ -265,10 +347,10 @@ void drawLights() {
 
   noStroke();
   for (int i = 0; i<lights.length; i++) {
-    lights[i].fillC = color(hue(lerpColor(gradientStart, gradientEnd, abs(200 - (frameCount % 400))*0.005)), 75, 75);
+    lights[i].fillC = color(hue(lerpColor(gradientStart, gradientEnd, abs(200 - (frameCount % 400))*0.005)), passiveSat, passiveBri);
 
     if (beatVal1 == i) {  
-      lights[i].fillC = currentBeatC; //current beat position color
+      //lights[i].fillC = currentBeatC; //current beat position color
     }
 
     for (Button button : buttons) {
@@ -286,7 +368,7 @@ void drawLights() {
 
     //Arduino inputs
     if (triggerValue > -1 && vibrationTrigged == true) { //Small hack to avoid arrayOutOfBounds error when starting up
-      lights[triggerValue-2].fillC = color (hue(lerpColor(gradientStart, gradientEnd, abs(200 - (frameCount % 400))*0.005)), 255, 255); //Lerp color full on
+      lights[triggerValue-2].fillC = color (hue(lerpColor(gradientStart, gradientEnd, abs(200 - (frameCount % 400))*0.005)), passiveSat, triggerBri); //Lerp color full on
     }
     lights[i].display();
   }
@@ -345,6 +427,7 @@ void serialEvent(Serial thisPort) {
   serialCounter++;
 
   vibrationTrigged = true;
+  //triggerBri = 255;
   vibrationTimer = 0;
 }
 
@@ -353,6 +436,8 @@ void trigFunction() {
   println("New trig revieced from input " + triggerValue);
   println("Total trigs recieved " + serialCounter);
   println();
+
+  triggerBri = 255;
 
   int midiNote = cMinor[triggerValue-2]; 
 
@@ -365,10 +450,9 @@ void trigFunction() {
   myMessageOff.add(midiNote); 
   myMessageOff.add(0); 
   oscP5.send(myMessageOff, myRemoteLocation);
-  
+
   //Flush out previous notes
   OscMessage myMessageFlush = new OscMessage("/flush");
   myMessageFlush.add(1);
   oscP5.send(myMessageFlush, myRemoteLocation);
-  
 }

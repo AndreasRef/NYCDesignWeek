@@ -52,3 +52,18 @@ class Button {
     popStyle();
   }
 }
+
+
+//SETUP BUTTON --- NOT PART OF THE BUTTON CLASS!!
+void setupButtons () {
+  count = horizontalSteps * verticalSteps;
+  buttons = new Button[count];
+
+  int index = 0;
+  for (int i = 0; i < horizontalSteps; i++) { 
+    for (int j = 0; j < verticalSteps; j++) {
+      buttons[index] = new Button(index, i, j, i*1280/horizontalSteps, j*programHeight/verticalSteps+yOffset, 1280/horizontalSteps, 480/verticalSteps, color(122), color(255));
+      index++;
+    }
+  }
+}

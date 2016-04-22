@@ -22,3 +22,17 @@ class Walker {
     location.y = constrain(location.y, yOffset + offSet, programHeight + yOffset-offSet);
   }
 }
+
+
+
+//ADD WALKERS --- NOT PART OF WALKER CLASS!!
+void keyPressed() {
+  if (key == 'a') walkers.add(new Walker((int)random(width), (int)random(programHeight)+yOffset)); 
+  if (key == 'd' && walkers.size() > 0)  walkers.remove(0);
+}
+
+void mousePressed() {
+  if (mouseY > yOffset && mouseY < yOffset + programHeight) {
+    walkers.add(new Walker(mouseX, mouseY));
+  }
+}

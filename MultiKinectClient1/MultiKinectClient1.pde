@@ -9,6 +9,8 @@
 
 //Update April 20th: Cleanup
 
+//Update April 25th: Grid is now 6x7
+
 //Libraries
 import org.openkinect.freenect.*;
 import org.openkinect.processing.*;
@@ -28,7 +30,7 @@ int startX = 0;
 int startY = 0;
 int endX = 1280;
 int endY = 480;
-int horizontalSteps = 8;
+int horizontalSteps = 6;
 int verticalSteps = 7;
 int count;
 Button[] buttons;
@@ -83,7 +85,7 @@ void setup() {
 
 
   //Client
-  client = new Client(this, "192.168.10.123", 5204); //The ip address is subject to change, so make sure you have it right every time you start up the program.
+  client = new Client(this, "192.168.10.115", 5204); //The ip address is subject to change, so make sure you have it right every time you start up the program.
 
 
   //ControlP5

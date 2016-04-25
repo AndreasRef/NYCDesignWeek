@@ -27,4 +27,17 @@ class Light {
     ellipse(xPos, programHeight + yOffset + 25, size, size);
     ellipse(xPos, programHeight + yOffset + 75, size, size);
   }
+  
+  
+  void fadeUp(int speed, int threshold) {
+   b += speed;
+   if (b>threshold) b = threshold;
+   
+  }
+  
+  void fadeDown(int speed, int threshold) {
+    b -= speed;
+   if (b<threshold) b = threshold;
+  }
+  
 }

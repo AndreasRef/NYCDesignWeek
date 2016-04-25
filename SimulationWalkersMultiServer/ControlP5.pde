@@ -7,6 +7,8 @@ void setupControlP5() {
 
   cp5.addToggle("displayNumbers").setPosition(200, height-55).setSize(50, 10);
   cp5.addToggle("displayButtons").setPosition(200, height-25).setSize(50, 10);
+  
+  cp5.addToggle("silentMode").setPosition(300, height-85).setSize(50, 10);
   cp5.addToggle("whiteLights").setPosition(300, height-55).setSize(50, 10);
   cp5.addToggle("walkerSimulation").setPosition(300, height-25).setSize(50, 10);
 
@@ -17,8 +19,8 @@ void setupControlP5() {
   cp5.addColorWheel("triggerC", 770, height - 115, 100 ).setRGB(color(#FFFFFF));
   cp5.addFrameRate().setPosition(width-100, height-50);
 
-  cp5.addSlider("passiveSat", 0, 255).setPosition(880, height-35);
-  cp5.addSlider("passiveBri", 0, 255).setPosition(880, height-15);
+  cp5.addSlider("fadeSpeed", 2, 20).setPosition(880, height-35);
+  cp5.addSlider("fadeThresLo", 0, 50).setPosition(880, height-15);
 }
 
 void controlEvent(ControlEvent theEvent) {

@@ -1,11 +1,18 @@
 //This sketch is the Server that recieves values from the two client sketches over wifi network about the position of people
 //It can also simulates people walking around in the tunnel using the walker class
-//The sketch uses it inputs to determine which commands to send to the light animation and Max4Live
-
+//The sketch uses its inputs to determine which commands to send to the light animation and Max4Live
 
 //Last Github push: White lights fade to the background color after being hit
 
-//Update April 22nd: Attempt to enabling triggering more vibration sensors simulationsly by making fadingTimer an array
+//Update April 22nd: Vibration wave and fade made quicker. Follow Sequencer by showing three small pixels light (in a dominant color) for each step
+//SilentMode added (fading lights), but not implemented to follow buttons yet
+
+//Update April 25th: Fading lights implemented
+
+//To do:
+//Changing stuff to 12 beats and rows instead of 16
+//Integrate gradient mode in master sketch
+
 
 //LIBRARIES
 import controlP5.*;
@@ -45,8 +52,8 @@ int hue[] = new int[stripNumbers*pixelsPerStrip];
 int saturation[] = new int[stripNumbers*pixelsPerStrip];
 int brightness[] = new int[stripNumbers*pixelsPerStrip];
 
-int passiveSat = 255;
-int passiveBri = 50;
+int fadeSpeed = 4;
+int fadeThresLo = 20;
 
 color[] colorOptions = { #003D43, #38001F, #8F7D00};
 
@@ -66,6 +73,9 @@ long vibrationTimer = 0;
 long fadingTimer = 0;
 boolean fadingTrigged = false;
 
+int vibrationThres = 80;
+
+
 //BUTTON
 int horizontalSteps = 16;
 int verticalSteps = 7;
@@ -78,8 +88,9 @@ ControlP5 cp5;
 
 boolean displayNumbers = true;
 boolean displayButtons = true;
-boolean whiteLights = true;
-boolean walkerSimulation = false;
+boolean whiteLights = false;
+boolean walkerSimulation = true;
+boolean silentMode = true;
 
 color gradientStart;
 color gradientEnd;
@@ -128,7 +139,7 @@ void setup() {
 
   //LIGHT
   for (int i=0; i<lights.length; i++) {
-    lights[i] = new Light(i, 255, 255, 255, color(#FC03C3)); //Pink
+    lights[i] = new Light(i, 100, 100, 100, color(#FC03C3)); //Pink
   }
 
   //OSCP5
@@ -204,14 +215,22 @@ void draw() {
     registry.setAntiLog(true);
     strips = registry.getStrips();
 
-    for (int i = 0; i<6; i++) {
-      if (triggerValue - 2 == i && vibrationTrigged) { //If a light vibration sensor has recently been trigged
-        runThroughStrip(triggerValue-2, color(#FFFFFF)); //White lights run through the strip
-      } else if (triggerValue - 2 == i && fadingTrigged) { //Fading function - starts a bit later
-        pushStrip(i, lerpColor(#FFFFFF, lights[i].fillC, (fadingTimer-100)/100.0));
+    // if (silentMode == false) {
+    for (int i = 0; i<stripNumbers; i++) {
+      if (triggerValue == i && vibrationTrigged) { //If a light vibration sensor has recently been trigged
+        runThroughStrip(triggerValue, color(#FFFFFF)); //White lights run through the strip
+      } else if (triggerValue == i && fadingTrigged) { //Fading function - starts a bit later
+        pushStrip(i, lerpColor(#FFFFFF, lights[i].fillC, (fadingTimer-vibrationThres/2)/(vibrationThres/2.0)));
         //println("Hello: " + fadingTimer + " " + (fadingTimer-100)/100);
       } else { //If light vibration sensor has not recently been trigged
         pushStrip(i, color(lights[i].fillC)); //Strip has the color of the lights
+      }
+    }
+
+    //Follow Sequencer by showing three small pixels in the bottom for each step
+    for (int i = 0; i<lights.length; i++) {
+      if (beatVal1 == i && silentMode == false) {  
+        if (i < stripNumbers) pushPixel(i*72, currentBeatC);
       }
     }
   }
@@ -232,18 +251,20 @@ void draw() {
     vibrationTimer++;
   }
 
-  if (vibrationTimer > 100) {
+  if (vibrationTimer > vibrationThres/2) {
     vibrationTrigged = false;
   } 
-  
-  //FadingTimer
-  fadingTimer ++;
 
-  if (fadingTimer > 200) {
+  //FadingTimer
+  if (fadingTimer < 5000) { 
+    fadingTimer ++;
+  }
+
+  if (fadingTimer > vibrationThres) {
     fadingTrigged = false;
   }
 
-  if (fadingTimer < 200) {
+  if (fadingTimer < vibrationThres) {
     fadingTrigged = true;
   }
 
@@ -258,23 +279,23 @@ void fillLights() {
 
   pushStyle();
   colorMode(HSB, 255); //OBS!
-
+ 
+  float lerpVal = abs(200 - (frameCount % (200*2)))*(1.0/200);
+  
   noStroke();
   for (int i = 0; i<lights.length; i++) {
-    lights[i].fillC = color(hue(lerpColor(gradientStart, gradientEnd, abs(200 - (frameCount % 400))*0.005)), passiveSat, passiveBri);
-
-    if (beatVal1 == i) {  
-      //lights[i].fillC = currentBeatC; //current beat position color
-    }
+    lights[i].fillC = color(hue(lerpColor(gradientStart, gradientEnd, lerpVal)), 255, lights[i].b);
+    lights[i].fadeDown(fadeSpeed/2,fadeThresLo);
 
     for (Button button : buttons) {
       if (button.row == i && button.over) { //color of rows/columns with people inside
+        lights[i].fadeUp(fadeSpeed,255);
         if (whiteLights) {
           lights[i].fillC = color (#FFFFFF, 120); //grey
         } else {
-          lights[i].fillC = color (hue(lerpColor(gradientStart, gradientEnd, abs(200 - (frameCount % 400))*0.005)), 255, 255); //Lerp color full on
+          lights[i].fillC = color (hue(lerpColor(gradientStart, gradientEnd, lerpVal)), 255, lights[i].b); //Lerp color full on
         }
-        if (beatVal1 == i) {
+        if (beatVal1 == i && silentMode == false) {
           lights[i].fillC = triggerC; //color of lights when they are trigged
         }
       }
@@ -282,7 +303,7 @@ void fillLights() {
 
     //ARDUINO INPUTS
     if (triggerValue > -1 && vibrationTrigged == true) { //Small hack to avoid arrayOutOfBounds error when starting up
-      lights[triggerValue-2].fillC = color (#FFFFFF); //White color to indicate a hit - only on screen, because it gets overwritten
+      lights[triggerValue].fillC = color (#FFFFFF); //White color to indicate a hit - only on screen, because it gets overwritten
     }
     lights[i].display();
   }
@@ -293,7 +314,13 @@ void fillLights() {
 void serialEvent(Serial thisPort) {
   String inputString = thisPort.readStringUntil('\n');
   inputString = trim(inputString);
+
   triggerValue = int(inputString);
+
+  //Compensating for Input 0, 1 and 13 being blocked on the Arduino
+  if (triggerValue == 50) triggerValue = 0;
+  if (triggerValue == 51) triggerValue = 1;
+  if (triggerValue == 53) triggerValue = 13; 
 
   serialCounter++;
 
@@ -310,7 +337,7 @@ void trigFunction() {
   println("Total trigs recieved " + serialCounter);
   println();
 
-  int midiNote = cMinor[triggerValue-2]; 
+  int midiNote = cMinor[triggerValue]; 
 
   OscMessage myMessage = new OscMessage("/note");
   myMessage.add(midiNote); 

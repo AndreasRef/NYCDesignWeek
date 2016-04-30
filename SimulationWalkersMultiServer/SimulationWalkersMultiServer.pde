@@ -2,17 +2,15 @@
 //It can also simulates people walking around in the tunnel using the walker class
 //The sketch uses its inputs to determine which commands to send to the light animation and Max4Live
 
-//Last Github push: White lights fade to the background color after being hit
-
 //Update April 22nd: Vibration wave and fade made quicker. Follow Sequencer by showing three small pixels light (in a dominant color) for each step
 //SilentMode added (fading lights), but not implemented to follow buttons yet
 
 //Update April 25th: Fading lights implemented
+//Changed to 12 beats and rows instead of 16
+//Integrated gradient mode in master sketch
 
-//To do:
-//Changing stuff to 12 beats and rows instead of 16
-//Integrate gradient mode in master sketch
-
+//Update April 28th: Integrated waveshow as pGraphics instead of previous manual waveshow
+//It works, but each strip gets its own color, so there is no gradient INSIDE each strip….
 
 //LIBRARIES
 import controlP5.*;
@@ -48,7 +46,7 @@ int stripNumbers = 6;
 int pixelsPerStrip = 72;
 int pixelsPerSide = 24;
 
-int hue[] = new int[stripNumbers*pixelsPerStrip];
+float hue[] = new float[stripNumbers*pixelsPerStrip];
 int saturation[] = new int[stripNumbers*pixelsPerStrip];
 int brightness[] = new int[stripNumbers*pixelsPerStrip];
 
@@ -77,7 +75,7 @@ int vibrationThres = 80;
 
 
 //BUTTON
-int horizontalSteps = 16;
+int horizontalSteps = 12;
 int verticalSteps = 7;
 int count;
 Button[] buttons;
@@ -89,8 +87,9 @@ ControlP5 cp5;
 boolean displayNumbers = true;
 boolean displayButtons = true;
 boolean whiteLights = false;
-boolean walkerSimulation = true;
+boolean walkerSimulation = false;
 boolean silentMode = true;
+boolean waveShow = false;
 
 color gradientStart;
 color gradientEnd;
@@ -98,9 +97,32 @@ color currentBeatC;
 color triggerC;
 
 int speed = 50;
+float waveShowSpeed = 0.1;
 
 //LIGHT
 Light[] lights = new Light[horizontalSteps];
+
+//NEW WAVESHOW
+
+PGraphics ws;
+
+int stride = 240;
+
+int waveShowWidth = 24;
+int waveShowHeight = 96;
+
+int GRADIENTLEN = 1500;
+// use this factor to make things faster, esp. for high resolutions
+int SPEEDUP = 1;
+
+int c = 0;
+// swing/wave function parameters
+int SWINGLEN = GRADIENTLEN*3;
+int SWINGMAX = GRADIENTLEN / 2 - 1;
+
+// gradient & swing curve arrays
+private int[] colorGrad;
+private int[] swingCurve;
 
 //OSCP5
 OscP5 oscP5;
@@ -157,6 +179,19 @@ void setup() {
 
   //WALKER
   walkers = new ArrayList<Walker>();
+  
+  //NEW WAVESHOW
+  ws = createGraphics(waveShowWidth, waveShowHeight);
+  makeGradient(GRADIENTLEN);
+  makeSwingCurve(SWINGLEN, SWINGMAX);
+  
+
+  //OLD WAVESHOW
+  for (int i = 0; i <72*6; i++) {
+    hue[i] = i/10;
+    saturation[i] = 0;
+    brightness[i]= 0;
+  }
 }
 
 void draw() {
@@ -215,24 +250,37 @@ void draw() {
     registry.setAntiLog(true);
     strips = registry.getStrips();
 
-    // if (silentMode == false) {
-    for (int i = 0; i<stripNumbers; i++) {
-      if (triggerValue == i && vibrationTrigged) { //If a light vibration sensor has recently been trigged
-        runThroughStrip(triggerValue, color(#FFFFFF)); //White lights run through the strip
-      } else if (triggerValue == i && fadingTrigged) { //Fading function - starts a bit later
-        pushStrip(i, lerpColor(#FFFFFF, lights[i].fillC, (fadingTimer-vibrationThres/2)/(vibrationThres/2.0)));
-        //println("Hello: " + fadingTimer + " " + (fadingTimer-100)/100);
-      } else { //If light vibration sensor has not recently been trigged
-        pushStrip(i, color(lights[i].fillC)); //Strip has the color of the lights
+    if (waveShow == false) {
+      for (int i = 0; i<stripNumbers; i++) {
+        if (triggerValue == i && vibrationTrigged) { //If a light vibration sensor has recently been trigged
+          runThroughStrip(triggerValue, color(#FFFFFF)); //White lights run through the strip
+        } else if (triggerValue == i && fadingTrigged) { //Fading function - starts a bit later
+          pushStrip(i, lerpColor(#FFFFFF, lights[i].fillC, (fadingTimer-vibrationThres/2)/(vibrationThres/2.0)));
+          //println("Hello: " + fadingTimer + " " + (fadingTimer-100)/100);
+        } else { //If light vibration sensor has not recently been trigged
+          pushStrip(i, color(lights[i].fillC)); //Strip has the color of the lights
+        }
       }
-    }
 
-    //Follow Sequencer by showing three small pixels in the bottom for each step
-    for (int i = 0; i<lights.length; i++) {
-      if (beatVal1 == i && silentMode == false) {  
-        if (i < stripNumbers) pushPixel(i*72, currentBeatC);
+      //Follow Sequencer by showing three small pixels in the bottom for each step
+      for (int i = 0; i<lights.length; i++) {
+        if (beatVal1 == i && silentMode == false) {  
+          if (i < stripNumbers) pushPixel(i*72, currentBeatC);
+        }
       }
+    } else if (waveShow == true) {
+      //Old waveShow - Push multiple pixels (changing colors rainbowstyle)
+      //pushStyle(); 
+      //for (int i = 0; i<pixelsPerStrip*strips.size(); i++) {
+      //  colorMode(HSB, 255);
+      //  float currentHue =  hue[i];
+      //  pushPixel(i, color(currentHue, 255, 255));
+      //  hue[i]+=waveShowSpeed;
+      //  if (hue[i] >255) hue[i] = 0;
+      //}
+      //popStyle();
     }
+    waveShowDraw();
   }
   //LIGHT
   fillLights();
@@ -279,17 +327,17 @@ void fillLights() {
 
   pushStyle();
   colorMode(HSB, 255); //OBS!
- 
+
   float lerpVal = abs(200 - (frameCount % (200*2)))*(1.0/200);
-  
+
   noStroke();
   for (int i = 0; i<lights.length; i++) {
     lights[i].fillC = color(hue(lerpColor(gradientStart, gradientEnd, lerpVal)), 255, lights[i].b);
-    lights[i].fadeDown(fadeSpeed/2,fadeThresLo);
+    lights[i].fadeDown(fadeSpeed/2, fadeThresLo);
 
     for (Button button : buttons) {
       if (button.row == i && button.over) { //color of rows/columns with people inside
-        lights[i].fadeUp(fadeSpeed,255);
+        lights[i].fadeUp(fadeSpeed, 255);
         if (whiteLights) {
           lights[i].fillC = color (#FFFFFF, 120); //grey
         } else {

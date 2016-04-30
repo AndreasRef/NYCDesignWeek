@@ -15,16 +15,16 @@ void server1Recieve() {
 
     data = int(split(incomingMessage, " "));
 
-    if (data.length == 7*8) { //This is necessary since the data sometimes is cut off, so not all values are sent
-      for (int i = 0; i <7*8; i++)
+    if (data.length == verticalSteps*horizontalSteps/2) { //This is necessary since the data sometimes is cut off, so not all values are sent
+      for (int i = 0; i <verticalSteps*horizontalSteps/2; i++)
         if (data[i] == 1) {
           buttons[i].over = true;
         } else {
           buttons[i].over = false;
         }
-      //println("GOOD data length");
+      println("GOOD data length");
     } else if (data.length >0) {
-      //println(data.length);
+      println(data.length);
     }
   }
 }
@@ -39,16 +39,16 @@ void server2Recieve() {
 
     data = int(split(incomingMessage, " "));
 
-    if (data.length == 7*8) { //This is necessary since the data sometimes gets cut off, so not all values are sent
-      for (int i = 0; i <7*8; i++)
+    if (data.length == verticalSteps*horizontalSteps/2) { //This is necessary since the data sometimes is cut off, so not all values are sent
+      for (int i = 0; i <verticalSteps*horizontalSteps/2; i++)
         if (data[i] == 1) {
-          buttons[i + 56].over = true;
+          buttons[i + verticalSteps*horizontalSteps/2].over = true;
         } else {
-          buttons[i + 56].over = false;
+          buttons[i + verticalSteps*horizontalSteps/2].over = false;
         }
-      //println("GOOD data length");
+      println("GOOD data length");
     } else if (data.length >0) {
-      //println(data.length);
+      println(data.length);
     }
   }
 }

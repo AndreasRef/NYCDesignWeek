@@ -302,7 +302,7 @@ void fillLights() {
   noStroke();
   for (int i = 0; i<lights.length; i++) {
     lights[i].fillC = color(hue(lerpColor(gradientStart, gradientEnd, lerpVal)), 255, lights[i].b);
-     lights[i].fadeDown(fadeSpeed/2, fadeThresLo);
+    lights[i].fadeDown(fadeSpeed/2, fadeThresLo);
 
     for (Button button : buttons) {
       if (button.row == i && button.over) { //color of rows/columns with people inside
@@ -312,11 +312,9 @@ void fillLights() {
 
         if (beatVal1 == i && silentMode == false) {
           //How to make this into a fading function?
-          lights[i].fillC = color(hue(lights[i].fillC), 175, 255); //A less saturated version of the color
+          lights[i].fillC = color(hue(lights[i].fillC), 175, brightness(lights[i].fillC));
         }
-      } else {
-        
-      }
+      } 
     }
     lights[i].display();
   }

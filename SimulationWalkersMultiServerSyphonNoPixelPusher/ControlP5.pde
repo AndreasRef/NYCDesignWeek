@@ -10,7 +10,6 @@ void setupControlP5() {
   cp5.addToggle("displayButtons").setPosition(200, height-25).setSize(50, 10);
   
   cp5.addToggle("silentMode").setPosition(300, height-85).setSize(50, 10);
-  cp5.addToggle("whiteLights").setPosition(300, height-55).setSize(50, 10);
   cp5.addToggle("walkerSimulation").setPosition(300, height-25).setSize(50, 10);
 
   cp5.addColorWheel("gradientStart", 400, height - 115, 100 ).setRGB(color(#71FFD6));
@@ -22,7 +21,7 @@ void setupControlP5() {
 
   cp5.addSlider("waveShowSpeed", 0.0, 5.0).setPosition(880, height-55);
   cp5.addSlider("fadeSpeed", 2, 20).setPosition(880, height-35);
-  cp5.addSlider("fadeThresLo", 0, 50).setPosition(880, height-15);
+  cp5.addSlider("fadeThresLo", 0, 100).setPosition(880, height-15).listen(true);
 }
 
 void controlEvent(ControlEvent theEvent) {

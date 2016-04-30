@@ -49,7 +49,7 @@ void syphonDraw() {
       syphonRunThroughCounter = 0;
   }
 
-
+  
   pg.endDraw();
   image(pg, width-pg.width, height-pg.height); 
 

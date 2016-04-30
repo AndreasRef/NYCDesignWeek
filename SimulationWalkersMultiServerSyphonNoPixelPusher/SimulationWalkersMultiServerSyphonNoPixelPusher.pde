@@ -1,14 +1,3 @@
-//This sketch is the Server that recieves values from the two client sketches over wifi network about the position of people
-//It can also simulates people walking around in the tunnel using the walker class
-//The sketch uses its inputs to determine which commands to send to the light animation and Max4Live
-
-//Update April 22nd: Vibration wave and fade made quicker. Follow Sequencer by showing three small pixels light (in a dominant color) for each step
-//SilentMode added (fading lights), but not implemented to follow buttons yet
-
-//Update April 25th: Fading lights implemented
-//Changed to 12 beats and rows instead of 16
-//Integrated gradient mode in master sketch
-
 //Update April 26th: Proof of concept for Syphon
 //Integrated a version of JoesWaveShow as a PGraphics that can be selected as the syphon output
 
@@ -56,22 +45,6 @@ import com.heroicrobot.dropbit.devices.pixelpusher.Pixel;
 import com.heroicrobot.dropbit.devices.pixelpusher.Strip;
 import java.util.*;
 
-////PIXELPUSHER
-//DeviceRegistry registry;
-
-//class TestObserver implements Observer {
-//  public boolean hasStrips = false;
-//  public void update(Observable registry, Object updatedDevice) {
-//    //println("Registry changed!");
-//    if (updatedDevice != null) {
-//      //println("Device change: " + updatedDevice);
-//    }
-//    this.hasStrips = true;
-//  }
-//}
-
-//TestObserver testObserver;
-//List<Strip> strips;
 
 int sidesPerStrip = 3;
 int stripNumbers = 6;
@@ -118,7 +91,6 @@ ControlP5 cp5;
 
 boolean displayNumbers = true;
 boolean displayButtons = true;
-boolean whiteLights = false;
 boolean walkerSimulation = true;
 boolean silentMode = false;
 boolean waveShow = false;
@@ -157,7 +129,7 @@ void settings() {
 
 void setup() {
   setupWaveshow();
-  
+
   // Create syhpon server to send frames out.
   server = new SyphonServer(this, "Processing Syphon");
   pg = createGraphics(48, 192);
@@ -209,7 +181,7 @@ void setup() {
 
 void draw() {
   background(50);
-  
+
   syphonDraw();
   drawWaveshow();
 
@@ -258,27 +230,24 @@ void draw() {
   line(beatVal1*width/horizontalSteps + 0.5*width/horizontalSteps, yOffset, beatVal1*width/horizontalSteps + 0.5*width/horizontalSteps, programHeight+yOffset);
   strokeWeight(1);
 
-    if (waveShow == false) {
-      for (int i = 0; i<stripNumbers; i++) {
-        if (triggerValue == i && vibrationTrigged) { //If a light vibration sensor has recently been trigged
-
-        } else if (triggerValue == i && fadingTrigged) { //Fading function - starts a bit later
-
-        } else { //If light vibration sensor has not recently been trigged
-  
-        }
+  if (waveShow == false) {
+    for (int i = 0; i<stripNumbers; i++) {
+      if (triggerValue == i && vibrationTrigged) { //If a light vibration sensor has recently been trigged
+      } else if (triggerValue == i && fadingTrigged) { //Fading function - starts a bit later
+      } else { //If light vibration sensor has not recently been trigged
       }
+    }
 
-      //Follow Sequencer by showing three small pixels in the bottom for each step
-      for (int i = 0; i<lights.length; i++) {
-        if (beatVal1 == i && silentMode == false) {  
-          //if (i < stripNumbers) pushPixel(i*72, currentBeatC);
-        }
+    //Follow Sequencer by showing three small pixels in the bottom for each step
+    for (int i = 0; i<lights.length; i++) {
+      if (beatVal1 == i && silentMode == false) {  
+        //if (i < stripNumbers) pushPixel(i*72, currentBeatC);
       }
-    } 
-    //else if (waveShow == true) {
-    //}
-    
+    }
+  } 
+  //else if (waveShow == true) {
+  //}
+
   //}
   //LIGHT
   fillLights();
@@ -317,12 +286,13 @@ void draw() {
   //SERVER
   server1Recieve(); 
   server2Recieve();
-  
 }
 
 
 //LIGHT
 void fillLights() {
+
+  boolean empty = true; //Boolean that is true if no people are inside
 
   pushStyle();
   colorMode(HSB, 255); //OBS!
@@ -332,32 +302,34 @@ void fillLights() {
   noStroke();
   for (int i = 0; i<lights.length; i++) {
     lights[i].fillC = color(hue(lerpColor(gradientStart, gradientEnd, lerpVal)), 255, lights[i].b);
-    lights[i].fadeDown(fadeSpeed/2, fadeThresLo);
+     lights[i].fadeDown(fadeSpeed/2, fadeThresLo);
 
     for (Button button : buttons) {
       if (button.row == i && button.over) { //color of rows/columns with people inside
+        empty = false;
         lights[i].fadeUp(fadeSpeed, 255);
-        if (whiteLights) {
-          lights[i].fillC = color (#FFFFFF, 120); //grey
-        } else {
-          lights[i].fillC = color (hue(lerpColor(gradientStart, gradientEnd, lerpVal)), 255, lights[i].b); //Lerp color full on
-        }
-        if (beatVal1 == i && silentMode == false) {
-          
-          //How to make this into a fading function?
-          lights[i].fillC = color(hue(lights[i].fillC),122, 255); //A less saturated version of the color
-  
-        }
-      }
-    }
+        lights[i].fillC = color (hue(lerpColor(gradientStart, gradientEnd, lerpVal)), 255, lights[i].b); //Lerp color full on
 
-    //ARDUINO INPUTS
-    if (triggerValue > -1 && vibrationTrigged == true) { //Small hack to avoid arrayOutOfBounds error when starting up
-      //lights[triggerValue].fillC = color (#FFFFFF); //White color to indicate a hit - only on screen, because it gets overwritten
+        if (beatVal1 == i && silentMode == false) {
+          //How to make this into a fading function?
+          lights[i].fillC = color(hue(lights[i].fillC), 175, 255); //A less saturated version of the color
+        }
+      } else {
+        
+      }
     }
     lights[i].display();
   }
   popStyle();
+  if (empty) {
+    fadeThresLo++;
+    if (fadeThresLo >= 100) fadeThresLo=100;
+    lights[beatVal1].fadeUp(fadeSpeed, 255);
+  } else {
+    fadeThresLo--;
+    if (fadeThresLo <= 20) fadeThresLo=20;
+  }
+  println(empty);
 }
 
 //ARDUINO SERIAL
@@ -366,7 +338,7 @@ void serialEvent(Serial thisPort) {
   inputString = trim(inputString);
 
   triggerValue = int(inputString);
-  
+
 
   //Compensating for Input 0, 1 and 13 being blocked on the Arduino
   if (triggerValue == 50) triggerValue = 0;

@@ -84,12 +84,13 @@ void setup() {
 
 
   //Client
-  client = new Client(this, "192.168.10.115", 5205); //The ip address is subject to change, so make sure you have it right every time you start up the program.
+  client = new Client(this, "192.168.10.129", 5205); //The ip address is subject to change, so make sure you have it right every time you start up the program.
 
 
   //ControlP5
   cp5 = new ControlP5(this);
   controlP5setup();
+  cp5.loadProperties(("default.json")); //Load default settings in setup
 
 
   //Kinect

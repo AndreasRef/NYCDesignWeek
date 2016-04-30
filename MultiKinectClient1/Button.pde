@@ -62,7 +62,8 @@ void setupButtons () {
   int index = 0;
   for (int i = 0; i < horizontalSteps; i++) { 
     for (int j = 0; j < verticalSteps; j++) {
-      buttons[index] = new Button(index, i, j, i*1280/horizontalSteps, j*programHeight/verticalSteps, 1280/horizontalSteps, 480/verticalSteps, color(122), color(255));
+      //buttons[index] = new Button(index, i, j, i*1280/horizontalSteps, j*programHeight/verticalSteps, 1280/horizontalSteps, 480/verticalSteps, color(122), color(255));
+      buttons[index] = new Button(index, i, j, i*abs(startX-endX)/horizontalSteps + startX, j*abs(startY-endY)/verticalSteps + startY, abs(startX-endX)/horizontalSteps, abs(startY-endY)/verticalSteps, color(122), color(255));
       index++;  
     }
   }

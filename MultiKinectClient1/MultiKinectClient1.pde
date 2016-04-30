@@ -11,6 +11,8 @@
 
 //Update April 25th: Grid is now 6x7
 
+//Update April 28th: Load Default Settings in setup
+
 //Libraries
 import org.openkinect.freenect.*;
 import org.openkinect.processing.*;
@@ -85,12 +87,13 @@ void setup() {
 
 
   //Client
-  client = new Client(this, "192.168.10.115", 5204); //The ip address is subject to change, so make sure you have it right every time you start up the program.
+  client = new Client(this, "192.168.10.129", 5204); //The ip address is subject to change, so make sure you have it right every time you start up the program.
 
 
   //ControlP5
   cp5 = new ControlP5(this);
   controlP5setup();
+  cp5.loadProperties(("default.json")); //Load default settings in setup
 
 
   //Kinect

@@ -2,15 +2,8 @@
 //It can also simulates people walking around in the tunnel using the walker class
 //The sketch uses its inputs to determine which commands to send to the light animation and Max4Live
 
-//Update April 22nd: Vibration wave and fade made quicker. Follow Sequencer by showing three small pixels light (in a dominant color) for each step
-//SilentMode added (fading lights), but not implemented to follow buttons yet
-
-//Update April 25th: Fading lights implemented
-//Changed to 12 beats and rows instead of 16
-//Integrated gradient mode in master sketch
-
-//Update April 28th: Integrated waveshow as pGraphics instead of previous manual waveshow
-//It works, but each strip gets its own color, so there is no gradient INSIDE each strip….
+//Update April 30th: Removed Joey waveshow and replaced with manually coded waveshow with GUI stuff
+//Use the manually coded waveshow can be used as general background color (currently commented out, but works more or less)
 
 //LIBRARIES
 import controlP5.*;
@@ -51,7 +44,7 @@ int saturation[] = new int[stripNumbers*pixelsPerStrip];
 int brightness[] = new int[stripNumbers*pixelsPerStrip];
 
 int fadeSpeed = 4;
-int fadeThresLo = 20;
+int fadeThresLo = 80;
 
 color[] colorOptions = { #003D43, #38001F, #8F7D00};
 
@@ -84,11 +77,10 @@ int beatVal1 = 0;
 //CONTROLP5
 ControlP5 cp5;
 
-boolean displayNumbers = true;
+boolean displayNumbers = false;
 boolean displayButtons = true;
-boolean whiteLights = false;
-boolean walkerSimulation = false;
-boolean silentMode = true;
+boolean walkerSimulation = true;
+boolean silentMode = false;
 boolean waveShow = false;
 
 color gradientStart;
@@ -97,32 +89,18 @@ color currentBeatC;
 color triggerC;
 
 int speed = 50;
-float waveShowSpeed = 0.1;
+float waveShowSpeed = 100;
+int emptyFadeFactor = 1;
+
+int wsHueMid = 150;
+int wsHueVariance = 50;
+float wsPixelVariance = 300;
+
+int waveSat = 255;
+int waveBri = 255;
 
 //LIGHT
 Light[] lights = new Light[horizontalSteps];
-
-//NEW WAVESHOW
-
-PGraphics ws;
-
-int stride = 240;
-
-int waveShowWidth = 24;
-int waveShowHeight = 96;
-
-int GRADIENTLEN = 1500;
-// use this factor to make things faster, esp. for high resolutions
-int SPEEDUP = 1;
-
-int c = 0;
-// swing/wave function parameters
-int SWINGLEN = GRADIENTLEN*3;
-int SWINGMAX = GRADIENTLEN / 2 - 1;
-
-// gradient & swing curve arrays
-private int[] colorGrad;
-private int[] swingCurve;
 
 //OSCP5
 OscP5 oscP5;
@@ -142,6 +120,8 @@ int yOffset = 100;
 
 void setup() {
   size(1280, 800);
+
+  colorMode(HSB);
 
   //Arduino Serial
   println(Serial.list());
@@ -179,12 +159,6 @@ void setup() {
 
   //WALKER
   walkers = new ArrayList<Walker>();
-  
-  //NEW WAVESHOW
-  ws = createGraphics(waveShowWidth, waveShowHeight);
-  makeGradient(GRADIENTLEN);
-  makeSwingCurve(SWINGLEN, SWINGMAX);
-  
 
   //OLD WAVESHOW
   for (int i = 0; i <72*6; i++) {
@@ -259,28 +233,34 @@ void draw() {
           //println("Hello: " + fadingTimer + " " + (fadingTimer-100)/100);
         } else { //If light vibration sensor has not recently been trigged
           pushStrip(i, color(lights[i].fillC)); //Strip has the color of the lights
-        }
-      }
 
-      //Follow Sequencer by showing three small pixels in the bottom for each step
-      for (int i = 0; i<lights.length; i++) {
-        if (beatVal1 == i && silentMode == false) {  
-          if (i < stripNumbers) pushPixel(i*72, currentBeatC);
+          //Use the manually coded waveshow as general background color
+          //for (int j = 0; j<pixelsPerStrip; j++) {
+          //  float currentHue =  hue[i*pixelsPerStrip+j];
+          //  pushPixel(i*pixelsPerStrip+j, color(currentHue, lights[i].s, lights[i].b));
+          //  hue[i*pixelsPerStrip+j] = wsHueMid + sin((i*pixelsPerStrip+j)/wsPixelVariance + frameCount/waveShowSpeed)*wsHueVariance;
+          //}
         }
       }
-    } else if (waveShow == true) {
-      //Old waveShow - Push multiple pixels (changing colors rainbowstyle)
-      //pushStyle(); 
+    } else if (waveShow == true) { //Old waveShow - Push multiple pixels (changing colors rainbowstyle)
+
+      //Original
       //for (int i = 0; i<pixelsPerStrip*strips.size(); i++) {
-      //  colorMode(HSB, 255);
-      //  float currentHue =  hue[i];
-      //  pushPixel(i, color(currentHue, 255, 255));
-      //  hue[i]+=waveShowSpeed;
-      //  if (hue[i] >255) hue[i] = 0;
+      // float currentHue =  hue[i];
+      // pushPixel(i, color(currentHue, waveSat, waveBri));
+      // hue[i] = wsHueMid + sin(i/wsPixelVariance + frameCount/waveShowSpeed)*wsHueVariance;
       //}
-      //popStyle();
+
+      //Attempt to use the manually coded waveshow as general background color
+
+      for (int i = 0; i<stripNumbers; i++) {
+        for (int j = 0; j<pixelsPerStrip; j++) {
+          float currentHue =  hue[i*pixelsPerStrip+j];
+          pushPixel(i*pixelsPerStrip+j, color(currentHue, waveSat, waveBri));
+          hue[i*pixelsPerStrip+j] = wsHueMid + sin((i*pixelsPerStrip+j)/wsPixelVariance + frameCount/waveShowSpeed)*wsHueVariance;
+        }
+      }
     }
-    waveShowDraw();
   }
   //LIGHT
   fillLights();
@@ -325,8 +305,7 @@ void draw() {
 //LIGHT
 void fillLights() {
 
-  pushStyle();
-  colorMode(HSB, 255); //OBS!
+  boolean empty = true; //Boolean that is true if no people are inside
 
   float lerpVal = abs(200 - (frameCount % (200*2)))*(1.0/200);
 
@@ -337,14 +316,12 @@ void fillLights() {
 
     for (Button button : buttons) {
       if (button.row == i && button.over) { //color of rows/columns with people inside
+        empty = false;
         lights[i].fadeUp(fadeSpeed, 255);
-        if (whiteLights) {
-          lights[i].fillC = color (#FFFFFF, 120); //grey
-        } else {
-          lights[i].fillC = color (hue(lerpColor(gradientStart, gradientEnd, lerpVal)), 255, lights[i].b); //Lerp color full on
-        }
+        lights[i].fillC = color (hue(lerpColor(gradientStart, gradientEnd, lerpVal)), 255, lights[i].b); //Lerp color full on
         if (beatVal1 == i && silentMode == false) {
-          lights[i].fillC = triggerC; //color of lights when they are trigged
+          lights[i].fillC = color(hue(lights[i].fillC), 175, brightness(lights[i].fillC));
+          //lights[i].fillC = triggerC; //color of lights when they are trigged
         }
       }
     }
@@ -355,7 +332,28 @@ void fillLights() {
     }
     lights[i].display();
   }
-  popStyle();
+
+
+  if (empty == true) {
+    fadeSpeed = 10;
+    for (int i = 0; i<lights.length; i++) {
+      //make fadeThresLo fade towards 10
+      fadeThresLo--;
+      if (fadeThresLo <= 10) fadeThresLo=10;
+      lights[i].fillC = color(hue(#FFFFFF), 0, brightness(lights[i].fillC));
+
+      if (beatVal1 == i || beatVal1 == i-1 || beatVal1 == i+1 || beatVal1 - 11 == i ||  beatVal1 == i-2 || beatVal1 == i+2 || beatVal1 - 10 == i) {
+        lights[i].fadeUp(fadeSpeed*emptyFadeFactor, 255);
+      } else {
+        lights[i].fadeDown(fadeSpeed/2, 0);
+      }
+      lights[i].display();
+    }
+  } else if (empty == false) {
+    //make fadeThresLo fade towards 50;
+    fadeThresLo++;
+    if (fadeThresLo >= 50) fadeThresLo=50;
+  }
 }
 
 //ARDUINO SERIAL

@@ -1,7 +1,18 @@
-//This experimental version is without the Pixel Pusher, and tries to do all the light animations in the PGraphics
-//Integrated a version of JoesWaveShow as a PGraphics that can be selected as the syphon output. 
-//Optimized the "empty" mode, so it now works the same way as the PixelPusher version
+//This master version recives information from:
+//The two Client sketches ("MultiKinectClient1" & "MultiKinectClient2") via wifi
+//The Arduino (when the vibration sensors are trigged)
+//Ableton (the current beatvalue)
 
+//It sends information to:
+//Ableton 
+//Resolume via Syphon
+
+//It does not send anything to the PixelPusher - that is a job of the "Syphon_To_PixelPusher" sketch
+//This sketch sends out a Syphon stream of 48x64 (number of tubes x pixels per tube) 
+//In the program windom it is scaled to four times the size for better visability
+
+
+//This particular sketch uses a new Swush function to enable multiple trigs on the vibration sensors at the same time
 
 //LIBRARIES
 import controlP5.*;
@@ -12,8 +23,6 @@ import processing.serial.*;
 import codeanticode.syphon.*;
 
 import java.util.*;
-
-int stripNumbers = 6;
 
 int fadeSpeed = 4;
 int fadeThresLo = 20;
@@ -27,15 +36,8 @@ int lastSerialCounter =0;
 int triggerValue = -1;
 String incomingMessage = "";
 int data[];
-int[] cMinor = {72, 74, 75, 77, 79, 80, 82, 84, 86, 87, 89, 91, 92, 94, 96, 98, 99, 101, 103, 104, 106, 108, 110, 11, 113, 115, 116, 118};
-boolean vibrationTrigged = false;
-long vibrationTimer = 0;
-
-long fadingTimer = 0;
-boolean fadingTrigged = false;
-
-int vibrationThres = 40;
-
+//int[] cMinor = {48, 50, 51, 53, 55, 56, 58, 60, 62, 63, 65, 67, 68, 70, 72, 74, 75, 77, 79, 80, 82, 84, 86, 87, 89, 91, 92, 94, 96, 98, 99, 101, 103, 104, 106, 108, 110, 11, 113, 115, 116, 118};
+int[] cMinor = {82, 80, 79, 77, 75, 74, 72, 70, 68, 67, 65, 63, 65, 67, 68, 70, 72, 74, 75, 77, 79, 80, 82, 84, 86, 87, 89, 91, 92, 94, 96, 98, 99, 101, 103, 104, 106, 108, 110, 11, 113, 115, 116, 118};
 
 //BUTTON
 int horizontalSteps = 12;
@@ -51,7 +53,6 @@ boolean displayNumbers = false;
 boolean displayButtons = true;
 boolean walkerSimulation = true;
 boolean silentMode = false;
-boolean waveShow = false;
 
 color gradientStart;
 color gradientEnd;
@@ -59,7 +60,6 @@ color gradientEnd;
 int emptyFadeFactor = 1;
 
 int speed = 50;
-float waveShowSpeed = 0.1;
 
 //LIGHT
 Light[] lights = new Light[horizontalSteps];
@@ -75,40 +75,26 @@ Server server2;
 
 //SYPHON
 SyphonServer server;
+int syphonRunThroughCounter = 0;
 PGraphics pg;
 
-//Waveshow
-PGraphics ws;
-
-int stride = 240;
-
-int waveShowWidth = 12*4; 
-int waveShowHeight = 64*4;
-int syphonRunThroughCounter = 0;
-
-int GRADIENTLEN = 1500;
-// use this factor to make things faster, esp. for high resolutions
-int SPEEDUP = 1;
-
-int c = 0;
-// swing/wave function parameters
-int SWINGLEN = GRADIENTLEN*3;
-int SWINGMAX = GRADIENTLEN / 2 - 1;
-
-// gradient & swing curve arrays
-private int[] colorGrad;
-private int[] swingCurve;
 
 //WALKER
 ArrayList<Walker> walkers;
-float walkerSteps = 2;
+
 
 //GLOBAL VARIABLES
 int programHeight = 480;
 int yOffset = 100;
 
-//Test
 int masterSat = 255;
+boolean empty = true;
+
+//Swush
+int innerLights = 24; 
+int[] swushAlpha = new int [innerLights];
+int[] swushHeight = new int[innerLights];
+
 
 void settings() {
   size(1280, 800, P2D);
@@ -116,19 +102,23 @@ void settings() {
 }
 
 void setup() {
-  setupWaveshow();
-  
-  colorMode(HSB,255);
+
+  colorMode(HSB, 255);
 
   // Create syhpon server to send frames out.
   server = new SyphonServer(this, "Processing Syphon");
-  //pg = createGraphics(48, 192);
-  pg = createGraphics(12*4, 64*4); //Suitable for Option 1 simple
+  pg = createGraphics(12*4, 64);
 
   //Arduino Serial
   println(Serial.list());
   myPort = new Serial(this, Serial.list()[1], 9600);
   myPort.bufferUntil('\n');
+
+  //SWUSH
+    for (int i=0; i < innerLights; i++) {         
+  swushAlpha[i] =255;
+  swushHeight[i] = 255;
+}
 
   //BUTTON
   setupButtons();
@@ -138,7 +128,7 @@ void setup() {
 
   //LIGHT
   for (int i=0; i<lights.length; i++) {
-    lights[i] = new Light(i, 100, 100, 100, color(#FFFFFF)); //Pink
+    lights[i] = new Light(i, 100, 100, 100, color(#FFFFFF));
   }
 
   //OSCP5
@@ -156,14 +146,12 @@ void setup() {
 
   //WALKER
   walkers = new ArrayList<Walker>();
-
 }
 
 void draw() {
   background(50);
 
   syphonDraw();
-  //drawWaveshow();
 
   //BUTTON & WALKER
   for (Button button : buttons) {
@@ -210,22 +198,6 @@ void draw() {
   line(beatVal1*width/horizontalSteps + 0.5*width/horizontalSteps, yOffset, beatVal1*width/horizontalSteps + 0.5*width/horizontalSteps, programHeight+yOffset);
   strokeWeight(1);
 
-  if (waveShow == false) {
-    for (int i = 0; i<stripNumbers; i++) {
-      if (triggerValue == i && vibrationTrigged) { //If a light vibration sensor has recently been trigged
-      } else if (triggerValue == i && fadingTrigged) { //Fading function - starts a bit later
-      } else { //If light vibration sensor has not recently been trigged
-      }
-    }
-
-    //Follow Sequencer by showing three small pixels in the bottom for each step
-    for (int i = 0; i<lights.length; i++) {
-      if (beatVal1 == i && silentMode == false) {  
-        //if (i < stripNumbers) pushPixel(i*72, currentBeatC);
-      }
-    }
-  } 
-  
   //LIGHT
   fillLights();
 
@@ -238,28 +210,6 @@ void draw() {
   lastSerialCounter = serialCounter;
 
 
-  //VibrationTimer
-  if (vibrationTimer < 5000) { 
-    vibrationTimer++;
-  }
-
-  if (vibrationTimer > vibrationThres/2) {
-    vibrationTrigged = false;
-  } 
-
-  //FadingTimer
-  if (fadingTimer < 5000) { 
-    fadingTimer ++;
-  }
-
-  if (fadingTimer > vibrationThres) {
-    fadingTrigged = false;
-  }
-
-  if (fadingTimer < vibrationThres) {
-    fadingTrigged = true;
-  }
-
   //SERVER
   server1Recieve(); 
   server2Recieve();
@@ -269,7 +219,7 @@ void draw() {
 //LIGHT
 void fillLights() {
 
-  boolean empty = true; //Boolean that is true if no people are inside
+  empty = true; //Boolean that is true if no people are inside
 
   float lerpVal = abs(200 - (frameCount % (200*2)))*(1.0/200);
 
@@ -287,23 +237,23 @@ void fillLights() {
         if (beatVal1 == i && silentMode == false) {
           lights[i].fillC = color(hue(lights[i].fillC), 175, brightness(lights[i].fillC));
         }
-      } 
+      }
     }
     lights[i].display();
   }
- 
+
   if (empty == true) {
     fadeSpeed = 10;
     masterSat -=3;
     if (masterSat <= 0) masterSat=0;
-    
+
     for (int i = 0; i<lights.length; i++) {
       //make fadeThresLo fade towards 10
       fadeThresLo--;
       if (fadeThresLo <= 10) fadeThresLo=10;
-      
+
       lights[i].fillC = color(hue(lights[i].fillC), masterSat, brightness(lights[i].fillC));
-     
+
       if (beatVal1 == i || beatVal1 == i-1 || beatVal1 == i+1 || beatVal1 - 11 == i ||  beatVal1 == i-2 || beatVal1 == i+2 || beatVal1 - 10 == i) {
         lights[i].fadeUp(fadeSpeed*emptyFadeFactor, 255);
       } else {
@@ -312,10 +262,10 @@ void fillLights() {
       lights[i].display();
     }
   } else if (empty == false) {
-    
-     masterSat +=3;
+
+    masterSat +=3;
     if (masterSat >= 255) masterSat=255;
-    
+
     //make fadeThresLo fade towards 50;
     fadeThresLo++;
     if (fadeThresLo >= 50) fadeThresLo=50;
@@ -333,14 +283,36 @@ void serialEvent(Serial thisPort) {
   if (triggerValue == 50) triggerValue = 0;
   if (triggerValue == 51) triggerValue = 1;
   if (triggerValue == 53) triggerValue = 13; 
-  syphonRunThroughStrip(triggerValue);
   serialCounter++;
-
-  vibrationTrigged = true;
-  vibrationTimer = 0;
-
-  fadingTimer = 0;
+  
+  swushFunction(triggerValue);
 }
+
+void swushFunction(int t) {
+  
+  if (swushHeight[t] > 0) {
+  swushAlpha[t] = 255;
+  
+  } else {
+   swushHeight[t] = 255;
+   swushAlpha[t] = 255;
+  }
+}
+
+
+
+void keyReleased() { //Swush 
+      if (int(key)-48 > -1 && int(key)-48 < innerLights) {
+      swushFunction(int(key)-48); //Subtract 48 since the char '0' has a ASCII value of 48, '1' is 49 etc...
+      triggerValue = (int(key)-48);
+      serialCounter++;
+
+      //vibrationTrigged = true;
+      //vibrationTimer = 0;
+      //fadingTimer = 0;
+    }
+}
+
 
 //ARDUINO & OSC
 void trigFunction() {

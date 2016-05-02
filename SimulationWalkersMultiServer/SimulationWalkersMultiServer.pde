@@ -5,6 +5,8 @@
 //Update April 30th: Removed Joey waveshow and replaced with manually coded waveshow with GUI stuff
 //Use the manually coded waveshow can be used as general background color (currently commented out, but works more or less)
 
+
+
 //LIBRARIES
 import controlP5.*;
 import netP5.*;
@@ -46,8 +48,6 @@ int brightness[] = new int[stripNumbers*pixelsPerStrip];
 int fadeSpeed = 4;
 int fadeThresLo = 80;
 
-color[] colorOptions = { #003D43, #38001F, #8F7D00};
-
 int[] waveCount = {0, 0, 0, 0, 0, 0};
 
 //ARDUINO SERIAL
@@ -85,8 +85,6 @@ boolean waveShow = false;
 
 color gradientStart;
 color gradientEnd;
-color currentBeatC;
-color triggerC;
 
 int speed = 50;
 float waveShowSpeed = 100;
@@ -117,6 +115,10 @@ float walkerSteps = 2;
 //GLOBAL VARIABLES
 int programHeight = 480;
 int yOffset = 100;
+
+
+//Test
+int masterSat = 255;
 
 void setup() {
   size(1280, 800);
@@ -311,14 +313,15 @@ void fillLights() {
 
   noStroke();
   for (int i = 0; i<lights.length; i++) {
-    lights[i].fillC = color(hue(lerpColor(gradientStart, gradientEnd, lerpVal)), 255, lights[i].b);
+    lights[i].fillC = color(hue(lerpColor(gradientStart, gradientEnd, lerpVal)), masterSat, lights[i].b);
     lights[i].fadeDown(fadeSpeed/2, fadeThresLo);
 
     for (Button button : buttons) {
       if (button.row == i && button.over) { //color of rows/columns with people inside
         empty = false;
         lights[i].fadeUp(fadeSpeed, 255);
-        lights[i].fillC = color (hue(lerpColor(gradientStart, gradientEnd, lerpVal)), 255, lights[i].b); //Lerp color full on
+        lights[i].fillC = color (hue(lerpColor(gradientStart, gradientEnd, lerpVal)), masterSat, lights[i].b); //Lerp color full on
+       
         if (beatVal1 == i && silentMode == false) {
           lights[i].fillC = color(hue(lights[i].fillC), 175, brightness(lights[i].fillC));
           //lights[i].fillC = triggerC; //color of lights when they are trigged
@@ -336,12 +339,18 @@ void fillLights() {
 
   if (empty == true) {
     fadeSpeed = 10;
+    masterSat -=3;
+    if (masterSat <= 0) masterSat=0;
+    
     for (int i = 0; i<lights.length; i++) {
       //make fadeThresLo fade towards 10
+      
       fadeThresLo--;
       if (fadeThresLo <= 10) fadeThresLo=10;
-      lights[i].fillC = color(hue(#FFFFFF), 0, brightness(lights[i].fillC));
+      
+      lights[i].fillC = color(hue(lights[i].fillC), masterSat, brightness(lights[i].fillC));
 
+     
       if (beatVal1 == i || beatVal1 == i-1 || beatVal1 == i+1 || beatVal1 - 11 == i ||  beatVal1 == i-2 || beatVal1 == i+2 || beatVal1 - 10 == i) {
         lights[i].fadeUp(fadeSpeed*emptyFadeFactor, 255);
       } else {
@@ -350,6 +359,11 @@ void fillLights() {
       lights[i].display();
     }
   } else if (empty == false) {
+    
+     masterSat +=3;
+    if (masterSat >= 255) masterSat=255;
+    //emptySat = 255;
+    
     //make fadeThresLo fade towards 50;
     fadeThresLo++;
     if (fadeThresLo >= 50) fadeThresLo=50;

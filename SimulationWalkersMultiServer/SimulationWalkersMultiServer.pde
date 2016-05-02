@@ -330,7 +330,7 @@ void fillLights() {
     }
 
     //ARDUINO INPUTS
-    if (triggerValue > -1 && vibrationTrigged == true) { //Small hack to avoid arrayOutOfBounds error when starting up
+    if (triggerValue > -1 && vibrationTrigged == true && triggerValue < 12) { //Small hack to avoid arrayOutOfBounds error when starting up
       lights[triggerValue].fillC = color (#FFFFFF); //White color to indicate a hit - only on screen, because it gets overwritten
     }
     lights[i].display();

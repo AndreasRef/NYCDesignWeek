@@ -14,9 +14,7 @@ void setupControlP5() {
 
   cp5.addColorWheel("gradientStart", 400, height - 115, 100 ).setRGB(color(#71FFD6));
   cp5.addColorWheel("gradientEnd", 520, height - 115, 100 ).setRGB(color(#FA0DFF));
-
-  cp5.addColorWheel("currentBeatC", 650, height - 115, 100 ).setRGB(color(#08FFEC));
-  cp5.addColorWheel("triggerC", 770, height - 115, 100 ).setRGB(color(#FFFFFF));
+  
   cp5.addFrameRate().setPosition(10, 10);
 
   cp5.addSlider("waveShowSpeed", 0.0, 5.0).setPosition(880, height-55);

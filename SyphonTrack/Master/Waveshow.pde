@@ -1,4 +1,3 @@
-
 void setupWaveshow() {
   ws = createGraphics(waveShowWidth, waveShowHeight);
   makeGradient(GRADIENTLEN);
@@ -29,7 +28,7 @@ void drawWaveshow() {
   ws.updatePixels();
 
   ws.endDraw();
-  image(ws, width - 100, height - 80); 
+  if (waveShow) image(ws, width-ws.width, height-ws.height); 
   //println(SPEEDUP);
   //println(GRADIENTLEN);
 }

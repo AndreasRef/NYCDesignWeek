@@ -28,7 +28,7 @@ void syphonDraw() {
       serialCounter++;
       //trigFunction();
 
-      if (syphonRunThroughCounter <500) syphonRunThroughCounter+=5;
+      if (syphonRunThroughCounter <500) syphonRunThroughCounter+=10;
 
       vibrationTrigged = true;
       vibrationTimer = 0;
@@ -39,11 +39,11 @@ void syphonDraw() {
   
   if (vibrationTrigged) {
     syphonRunThroughStrip(triggerValue);
-    if (syphonRunThroughCounter <500) syphonRunThroughCounter+=5;
+    if (syphonRunThroughCounter <500) syphonRunThroughCounter+=10;
     
   } else if (fadingTrigged && triggerValue > -1) { // triggerValue > -1 condiction avoids start up errors from the Arduino
     syphonRunThroughStrip(triggerValue);
-    if (syphonRunThroughCounter <500) syphonRunThroughCounter+=5;
+    if (syphonRunThroughCounter <500) syphonRunThroughCounter+=10;
   }
   else if (vibrationTrigged == false && fadingTrigged == false) {
       syphonRunThroughCounter = 0;
@@ -64,12 +64,11 @@ void syphonDraw() {
 
 void syphonRunThroughStrip(int strip) {
 
-  int thres = 300;
+  int thres = 500;
 
   if (syphonRunThroughCounter > thres) {
     syphonRunThroughCounter = thres;
   }
-  
   
   
   pg.stroke(lerpColor(#FFFFFF, lights[strip].fillC, map(syphonRunThroughCounter, 0, thres, 0, 1)));
@@ -78,8 +77,6 @@ void syphonRunThroughStrip(int strip) {
   pg.line(strip*4+1, 0, strip*4+1, syphonRunThroughCounter);
   pg.line(strip*4+2, 0, strip*4+2, syphonRunThroughCounter);
   pg.line(strip*4+3, 0, strip*4+3, syphonRunThroughCounter);
-
-
 
   //println("syphonRunThroughStrip" + strip);
 }

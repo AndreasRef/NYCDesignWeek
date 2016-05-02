@@ -1,36 +1,6 @@
-//Update April 26th: Proof of concept for Syphon
-//Integrated a version of JoesWaveShow as a PGraphics that can be selected as the syphon output
-
 //This experimental version is without the Pixel Pusher, and tries to do all the light animations in the PGraphics
-
-//Syphon
-import codeanticode.syphon.*;
-SyphonServer server;
-PGraphics pg;
-
-//Waveshow
-PGraphics ws;
-
-int stride = 240;
-
-int waveShowWidth = 6*4;
-int waveShowHeight = 72;
-int syphonRunThroughCounter = 0;
-
-
-int GRADIENTLEN = 1500;
-// use this factor to make things faster, esp. for high resolutions
-int SPEEDUP = 1;
-
-int c = 0;
-// swing/wave function parameters
-int SWINGLEN = GRADIENTLEN*3;
-int SWINGMAX = GRADIENTLEN / 2 - 1;
-
-// gradient & swing curve arrays
-private int[] colorGrad;
-private int[] swingCurve;
-
+//Integrated a version of JoesWaveShow as a PGraphics that can be selected as the syphon output. 
+//Optimized the "empty" mode, so it now works the same way as the PixelPusher version
 
 
 //LIBRARIES
@@ -39,26 +9,14 @@ import netP5.*;
 import oscP5.*;
 import processing.net.*;
 import processing.serial.*;
+import codeanticode.syphon.*;
 
-import com.heroicrobot.dropbit.registry.*;
-import com.heroicrobot.dropbit.devices.pixelpusher.Pixel;
-import com.heroicrobot.dropbit.devices.pixelpusher.Strip;
 import java.util.*;
 
-
-int sidesPerStrip = 3;
 int stripNumbers = 6;
-int pixelsPerStrip = 72;
-int pixelsPerSide = 24;
-
-float hue[] = new float[stripNumbers*pixelsPerStrip];
-int saturation[] = new int[stripNumbers*pixelsPerStrip];
-int brightness[] = new int[stripNumbers*pixelsPerStrip];
 
 int fadeSpeed = 4;
 int fadeThresLo = 20;
-
-color[] colorOptions = { #003D43, #38001F, #8F7D00};
 
 int[] waveCount = {0, 0, 0, 0, 0, 0};
 
@@ -89,7 +47,7 @@ int beatVal1 = 0;
 //CONTROLP5
 ControlP5 cp5;
 
-boolean displayNumbers = true;
+boolean displayNumbers = false;
 boolean displayButtons = true;
 boolean walkerSimulation = true;
 boolean silentMode = false;
@@ -97,8 +55,8 @@ boolean waveShow = false;
 
 color gradientStart;
 color gradientEnd;
-color currentBeatC;
-color triggerC;
+
+int emptyFadeFactor = 1;
 
 int speed = 50;
 float waveShowSpeed = 0.1;
@@ -114,6 +72,33 @@ NetAddress myRemoteLocation;
 Server server1;
 Server server2;
 
+
+//SYPHON
+SyphonServer server;
+PGraphics pg;
+
+//Waveshow
+PGraphics ws;
+
+int stride = 240;
+
+int waveShowWidth = 12*4; 
+int waveShowHeight = 64*4;
+int syphonRunThroughCounter = 0;
+
+int GRADIENTLEN = 1500;
+// use this factor to make things faster, esp. for high resolutions
+int SPEEDUP = 1;
+
+int c = 0;
+// swing/wave function parameters
+int SWINGLEN = GRADIENTLEN*3;
+int SWINGMAX = GRADIENTLEN / 2 - 1;
+
+// gradient & swing curve arrays
+private int[] colorGrad;
+private int[] swingCurve;
+
 //WALKER
 ArrayList<Walker> walkers;
 float walkerSteps = 2;
@@ -122,6 +107,9 @@ float walkerSteps = 2;
 int programHeight = 480;
 int yOffset = 100;
 
+//Test
+int masterSat = 255;
+
 void settings() {
   size(1280, 800, P2D);
   PJOGL.profile=1;
@@ -129,20 +117,18 @@ void settings() {
 
 void setup() {
   setupWaveshow();
+  
+  colorMode(HSB,255);
 
   // Create syhpon server to send frames out.
   server = new SyphonServer(this, "Processing Syphon");
-  pg = createGraphics(48, 192);
+  //pg = createGraphics(48, 192);
+  pg = createGraphics(12*4, 64*4); //Suitable for Option 1 simple
 
   //Arduino Serial
   println(Serial.list());
   myPort = new Serial(this, Serial.list()[1], 9600);
   myPort.bufferUntil('\n');
-
-  //PixelPusher
-  //registry = new DeviceRegistry();
-  //testObserver = new TestObserver();
-  //registry.addObserver(testObserver);
 
   //BUTTON
   setupButtons();
@@ -152,7 +138,7 @@ void setup() {
 
   //LIGHT
   for (int i=0; i<lights.length; i++) {
-    lights[i] = new Light(i, 100, 100, 100, color(#FC03C3)); //Pink
+    lights[i] = new Light(i, 100, 100, 100, color(#FFFFFF)); //Pink
   }
 
   //OSCP5
@@ -171,19 +157,13 @@ void setup() {
   //WALKER
   walkers = new ArrayList<Walker>();
 
-  //WAVESHOW
-  for (int i = 0; i <72*6; i++) {
-    hue[i] = i/10;
-    saturation[i] = 0;
-    brightness[i]= 0;
-  }
 }
 
 void draw() {
   background(50);
 
   syphonDraw();
-  drawWaveshow();
+  //drawWaveshow();
 
   //BUTTON & WALKER
   for (Button button : buttons) {
@@ -245,10 +225,7 @@ void draw() {
       }
     }
   } 
-  //else if (waveShow == true) {
-  //}
-
-  //}
+  
   //LIGHT
   fillLights();
 
@@ -294,40 +271,55 @@ void fillLights() {
 
   boolean empty = true; //Boolean that is true if no people are inside
 
-  pushStyle();
-  colorMode(HSB, 255); //OBS!
-
   float lerpVal = abs(200 - (frameCount % (200*2)))*(1.0/200);
 
   noStroke();
   for (int i = 0; i<lights.length; i++) {
-    lights[i].fillC = color(hue(lerpColor(gradientStart, gradientEnd, lerpVal)), 255, lights[i].b);
+    lights[i].fillC = color(hue(lerpColor(gradientStart, gradientEnd, lerpVal)), masterSat, lights[i].b);
     lights[i].fadeDown(fadeSpeed/2, fadeThresLo);
 
     for (Button button : buttons) {
       if (button.row == i && button.over) { //color of rows/columns with people inside
         empty = false;
         lights[i].fadeUp(fadeSpeed, 255);
-        lights[i].fillC = color (hue(lerpColor(gradientStart, gradientEnd, lerpVal)), 255, lights[i].b); //Lerp color full on
+        lights[i].fillC = color (hue(lerpColor(gradientStart, gradientEnd, lerpVal)), masterSat, lights[i].b); //Lerp color full on
 
         if (beatVal1 == i && silentMode == false) {
-          //How to make this into a fading function?
           lights[i].fillC = color(hue(lights[i].fillC), 175, brightness(lights[i].fillC));
         }
       } 
     }
     lights[i].display();
   }
-  popStyle();
-  if (empty) {
+ 
+  if (empty == true) {
+    fadeSpeed = 10;
+    masterSat -=3;
+    if (masterSat <= 0) masterSat=0;
+    
+    for (int i = 0; i<lights.length; i++) {
+      //make fadeThresLo fade towards 10
+      fadeThresLo--;
+      if (fadeThresLo <= 10) fadeThresLo=10;
+      
+      lights[i].fillC = color(hue(lights[i].fillC), masterSat, brightness(lights[i].fillC));
+     
+      if (beatVal1 == i || beatVal1 == i-1 || beatVal1 == i+1 || beatVal1 - 11 == i ||  beatVal1 == i-2 || beatVal1 == i+2 || beatVal1 - 10 == i) {
+        lights[i].fadeUp(fadeSpeed*emptyFadeFactor, 255);
+      } else {
+        lights[i].fadeDown(fadeSpeed/2, 0);
+      }
+      lights[i].display();
+    }
+  } else if (empty == false) {
+    
+     masterSat +=3;
+    if (masterSat >= 255) masterSat=255;
+    
+    //make fadeThresLo fade towards 50;
     fadeThresLo++;
-    if (fadeThresLo >= 100) fadeThresLo=100;
-    lights[beatVal1].fadeUp(fadeSpeed, 255);
-  } else {
-    fadeThresLo--;
-    if (fadeThresLo <= 20) fadeThresLo=20;
+    if (fadeThresLo >= 50) fadeThresLo=50;
   }
-  println(empty);
 }
 
 //ARDUINO SERIAL
@@ -336,7 +328,6 @@ void serialEvent(Serial thisPort) {
   inputString = trim(inputString);
 
   triggerValue = int(inputString);
-
 
   //Compensating for Input 0, 1 and 13 being blocked on the Arduino
   if (triggerValue == 50) triggerValue = 0;

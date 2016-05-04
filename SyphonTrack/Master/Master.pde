@@ -11,8 +11,8 @@
 //This sketch sends out a Syphon stream of 48x64 (number of tubes x pixels per tube) 
 //In the program windom it is scaled to four times the size for better visability
 
-
 //This particular sketch uses a new Swush function to enable multiple trigs on the vibration sensors at the same time
+//New feature is also the alpha gradient, and the horizontalGradient
 
 //LIBRARIES
 import controlP5.*;
@@ -49,17 +49,28 @@ int beatVal1 = 0;
 //CONTROLP5
 ControlP5 cp5;
 
+
 boolean displayNumbers = false;
 boolean displayButtons = true;
 boolean walkerSimulation = true;
 boolean silentMode = false;
+boolean emptyWhite = true;
 
 color gradientStart;
 color gradientEnd;
 
 int emptyFadeFactor = 1;
 
+int maxBri = 255;
+int maxSat = 255;
+
 int speed = 50;
+
+int tintC = 0;
+int tintA = 0;
+
+float horizontalGradient = 0;
+float verticalGradient = 1;
 
 //LIGHT
 Light[] lights = new Light[horizontalSteps];
@@ -96,6 +107,10 @@ int[] swushAlpha = new int [innerLights];
 int[] swushHeight = new int[innerLights];
 
 
+//Gradient image test
+PImage transGradient;
+
+
 void settings() {
   size(1280, 800, P2D);
   PJOGL.profile=1;
@@ -104,6 +119,8 @@ void settings() {
 void setup() {
 
   colorMode(HSB, 255);
+  transGradient = loadImage("transGradient.png");
+  
 
   // Create syhpon server to send frames out.
   server = new SyphonServer(this, "Processing Syphon");
@@ -151,7 +168,7 @@ void setup() {
 void draw() {
   background(50);
 
-  syphonDraw();
+  
 
   //BUTTON & WALKER
   for (Button button : buttons) {
@@ -197,7 +214,21 @@ void draw() {
   stroke(255, 0, 0);
   line(beatVal1*width/horizontalSteps + 0.5*width/horizontalSteps, yOffset, beatVal1*width/horizontalSteps + 0.5*width/horizontalSteps, programHeight+yOffset);
   strokeWeight(1);
-
+  
+  
+  //Cp5 Color indicators
+  pushStyle();
+  fill(#FFFFFF);
+  text("hue: " + round(hue(gradientStart)),400, height - 125);
+  int maxHue = round((hue(gradientEnd)) + (verticalGradient*lights.length + horizontalGradient* 12));
+  if (maxHue > 255) maxHue = maxHue - 255; 
+  text("hue: " + round(hue(gradientEnd)), 520, height - 125); 
+  text("maxhue: " + maxHue,650, height-105);
+  
+  fill(maxHue, maxBri, maxSat);
+  rect(650, height-95, 100, 10);
+  popStyle();
+  
   //LIGHT
   fillLights();
 
@@ -208,7 +239,8 @@ void draw() {
     trigFunction();
   }
   lastSerialCounter = serialCounter;
-
+  
+  syphonDraw();
 
   //SERVER
   server1Recieve(); 
@@ -219,40 +251,47 @@ void draw() {
 //LIGHT
 void fillLights() {
 
-  empty = true; //Boolean that is true if no people are inside
+  empty = true; //Empty true if no people are inside
 
   float lerpVal = abs(200 - (frameCount % (200*2)))*(1.0/200);
-
+  
   noStroke();
   for (int i = 0; i<lights.length; i++) {
-    lights[i].fillC = color(hue(lerpColor(gradientStart, gradientEnd, lerpVal)), masterSat, lights[i].b);
+    lights[i].fillC = color(hue(lerpColor(gradientStart, gradientEnd, lerpVal))+i*horizontalGradient, min(masterSat,maxSat), min(lights[i].b, maxBri));
     lights[i].fadeDown(fadeSpeed/2, fadeThresLo);
+    lights[i].s = maxSat;
 
     for (Button button : buttons) {
       if (button.row == i && button.over) { //color of rows/columns with people inside
         empty = false;
         lights[i].fadeUp(fadeSpeed, 255);
-        lights[i].fillC = color (hue(lerpColor(gradientStart, gradientEnd, lerpVal)), masterSat, lights[i].b); //Lerp color full on
+        //lights[i].fillC = color (hue(lerpColor(gradientStart, gradientEnd, lerpVal)), masterSat, lights[i].b); //Lerp color full on
 
         if (beatVal1 == i && silentMode == false) {
-          lights[i].fillC = color(hue(lights[i].fillC), 175, brightness(lights[i].fillC));
-        }
+          lights[i].fillC = color(hue(lights[i].fillC), maxSat - 75, min(lights[i].b, maxBri));
+          
+          lights[i].s = maxSat - 75;
+        } 
       }
     }
     lights[i].display();
+   println(lights[0].s);
   }
 
   if (empty == true) {
     fadeSpeed = 10;
-    masterSat -=3;
+    if (emptyWhite) {
+      masterSat -=3;
+    } else {
+      masterSat +=3;
+      if (masterSat > 255) masterSat =255;
+    }
     if (masterSat <= 0) masterSat=0;
 
     for (int i = 0; i<lights.length; i++) {
       //make fadeThresLo fade towards 10
       fadeThresLo--;
       if (fadeThresLo <= 10) fadeThresLo=10;
-
-      lights[i].fillC = color(hue(lights[i].fillC), masterSat, brightness(lights[i].fillC));
 
       if (beatVal1 == i || beatVal1 == i-1 || beatVal1 == i+1 || beatVal1 - 11 == i ||  beatVal1 == i-2 || beatVal1 == i+2 || beatVal1 - 10 == i) {
         lights[i].fadeUp(fadeSpeed*emptyFadeFactor, 255);
@@ -263,6 +302,7 @@ void fillLights() {
     }
   } else if (empty == false) {
 
+    
     masterSat +=3;
     if (masterSat >= 255) masterSat=255;
 

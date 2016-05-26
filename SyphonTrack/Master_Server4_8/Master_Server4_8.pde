@@ -1,5 +1,5 @@
 //This master version recives information from:
-//The two Client sketches ("MultiKinectClient1" & "MultiKinectClient2") via wifi
+//The two Client sketches ("MultiKinectClient1" (8x7 cells) & "SingKinectClient2" (4x7 cells) via wifi
 //The Arduino (when the vibration sensors are trigged)
 //Ableton (the current beatvalue)
 
@@ -9,7 +9,6 @@
 
 //It does not send anything to the PixelPusher - that is a job of the "Syphon_To_PixelPusher" sketch
 //This sketch sends out a Syphon stream of 48x64 (number of tubes x pixels per tube) 
-//In the program windom it is scaled to four times the size for better visability
 
 //The sketch uses a new Swush function to enable multiple trigs on the vibration sensors at the same time
 //New feature is also the alpha gradient, the horizontalGradient and the vertical gradient
@@ -25,7 +24,7 @@ import codeanticode.syphon.*;
 import java.util.*;
 
 int fadeSpeed = 4;
-int fadeThresLo = 20;
+int fadeThresLo = 0;
 
 int[] waveCount = {0, 0, 0, 0, 0, 0};
 
@@ -73,7 +72,7 @@ float verticalGradient = 1;
 
 int gradientPeriod = 200;
 
-int trigHighlight = 75;
+int trigHighlight = 255;
 
 float noiseSmooth = 0.03;
 float noiseScale = 0.02;

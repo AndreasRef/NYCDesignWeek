@@ -18,13 +18,13 @@ PGraphics canvas;
 
 boolean ready_to_go = true;
 int lastPosition;
-int canvasW = 288;
+int canvasW = 192;
 //int canvasH = 432 ;
-int canvasH = 8;
+int canvasH = 16;
 TestObserver testObserver;
 
 void settings() {
- size(288, 8, P2D);
+ size(192, 16, P2D);
   PJOGL.profile = 1;
 }
 

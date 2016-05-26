@@ -2,42 +2,42 @@
   "/minDepth": {
     "min": 0,
     "max": 1000,
-    "value": 13.333333969116211
+    "value": 60
   },
   "/showInfo": {"value": 1},
   "/blurFactor": {
     "min": 0,
     "max": 50,
-    "value": 0
+    "value": 3
   },
   "/verticalSteps": {
     "min": 0,
     "max": 10,
     "value": 7
   },
-  "/showBlobs": {"value": 1},
+  "/showBlobs": {"value": 0},
   "/endY": {
     "min": 240,
     "max": 480,
-    "value": 480
+    "value": 450.9090881347656
   },
   "/endX": {
-    "min": 640,
-    "max": 1280,
-    "value": 1157.171630859375
-  },
-  "/mirror": {"value": 0},
-  "/rgbView": {"value": 0},
-  "/switchOrder": {"value": 1},
-  "/maxDepth": {
     "min": 0,
+    "max": 640,
+    "value": 504.242431640625
+  },
+  "/mirror": {"value": 1},
+  "/rgbView": {"value": 0},
+  "/switchOrder": {"value": 0},
+  "/maxDepth": {
+    "min": 900,
     "max": 1000,
-    "value": 973.3333740234375
+    "value": 980
   },
   "/cropAmount": {
     "min": 0,
     "max": 50,
-    "value": 18
+    "value": 9
   },
   "/kinect0Y": {
     "min": -100,
@@ -62,22 +62,22 @@
   "/minimumBlobSize": {
     "min": 0,
     "max": 250,
-    "value": 40
+    "value": 100
   },
   "/startY": {
     "min": 0,
     "max": 240,
-    "value": 9.696969985961914
+    "value": 19.393939971923828
   },
   "/horizontalSteps": {
     "min": 0,
     "max": 10,
-    "value": 6
+    "value": 4.545454502105713
   },
   "/startX": {
     "min": 0,
     "max": 640,
-    "value": 0
+    "value": 58.181819915771484
   },
   "/mouseControl": {"value": 0},
   "/showButtons": {"value": 1},

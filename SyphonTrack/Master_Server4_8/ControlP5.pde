@@ -24,7 +24,7 @@ void setupControlP5() {
   
   cp5.addToggle("noiseGradient").setPosition(810, height-115).setSize(50, 10);
   
-  cp5.addSlider("trigHighlight", 0, 150).setPosition(880, height-115);
+  cp5.addSlider("trigHighlight", 0, 255).setPosition(880, height-115);
   cp5.addSlider("gradientPeriod", 100, 1000).setPosition(880, height-95);
   cp5.addSlider("verticalGradient", 0, 2).setPosition(880, height-75);
   cp5.addSlider("horizontalGradient", 0, 5).setPosition(880, height-55);
